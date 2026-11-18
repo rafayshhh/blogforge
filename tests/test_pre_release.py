@@ -36,8 +36,9 @@ def test_gemini_provider_safe_initialization(monkeypatch):
     assert provider.client is not None
 
 
-def test_article_generation_pipeline_mocked():
+def test_article_generation_pipeline_mocked(tmp_path, monkeypatch):
     """Verify full end-to-end article generation workflow with mocked external API calls."""
+    monkeypatch.chdir(tmp_path)
     mock_ai = MagicMock()
 
     mock_outline = ArticleOutline(
@@ -78,8 +79,9 @@ def test_article_generation_pipeline_mocked():
     assert final.faq[0].question == "Is this scalable?"
 
 
-def test_cancellation_behavior():
+def test_cancellation_behavior(tmp_path, monkeypatch):
     """Verify that canceling the generation pipeline halts section processing immediately."""
+    monkeypatch.chdir(tmp_path)
     mock_ai = MagicMock()
     mock_ai.generate.return_value = MagicMock(text="Section text")
 
@@ -166,8 +168,9 @@ def test_project_persistence_and_service(tmp_path):
     assert len(fetched.internal_links) == 1
 
 
-def test_desktop_application_startup():
+def test_desktop_application_startup(tmp_path, monkeypatch):
     """Verify desktop application widgets and main window initialize cleanly offscreen."""
+    monkeypatch.chdir(tmp_path)
     from PySide6.QtWidgets import QApplication
     from app.ui.main_window import MainWindow
 

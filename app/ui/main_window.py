@@ -185,6 +185,9 @@ class MainWindow(QMainWindow):
         for p in projects:
             self.project_switcher.addItem(p.name, p.id)
 
+        if not projects:
+            self.project_switcher.addItem("No Projects", None)
+
         self.project_switcher.blockSignals(False)
         self.on_project_switched()
 
@@ -195,6 +198,9 @@ class MainWindow(QMainWindow):
         if proj_id:
             self.dashboard_view.set_active_project_name(proj_name)
             self.status_msg.setText(f"Active Project: {proj_name}")
+        else:
+            self.dashboard_view.set_active_project_name("None")
+            self.status_msg.setText("No Active Project (Create one in Projects)")
 
     def get_active_project(self) -> Optional[Project]:
         """Returns currently selected Project model."""
@@ -206,10 +212,10 @@ class MainWindow(QMainWindow):
     def refresh_dashboard_state(self) -> None:
         """Syncs environment status and counts with the dashboard view."""
         has_gemini = bool(os.getenv("GEMINI_API_KEY"))
-        has_proj = self.project_switcher.count() > 0
+        active_p = self.get_active_project()
+        has_proj = active_p is not None
 
         # Check if Next.js export directory is set
-        active_p = self.get_active_project()
         has_nextjs = bool(
             active_p and active_p.nextjs_integration and active_p.nextjs_integration.enabled
         )
