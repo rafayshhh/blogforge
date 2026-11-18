@@ -1,7 +1,7 @@
 """Abstract base interface for AI providers."""
 
 from abc import ABC, abstractmethod
-from typing import Optional, Type, Any
+from typing import Optional, Type, Any, List, Tuple, Dict
 from pydantic import BaseModel
 from app.models.provider import ProviderResponse
 
@@ -31,3 +31,22 @@ class AIProvider(ABC):
     ) -> Any:
         """Generates a structured response validated against a Pydantic model."""
         pass
+
+    @classmethod
+    def diagnose_connection(
+        cls,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        **kwargs: Any
+    ) -> Tuple[bool, str, Dict[str, Any]]:
+        """Tests provider connectivity and authentication status."""
+        return (False, "diagnose_connection not implemented for this provider.", {"status": "UNIMPLEMENTED"})
+
+    @classmethod
+    def list_available_models(
+        cls,
+        api_key: Optional[str] = None,
+        **kwargs: Any
+    ) -> List[str]:
+        """Discovers or lists models accessible to this provider."""
+        return []

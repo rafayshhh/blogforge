@@ -1,7 +1,8 @@
-"""Pydantic data models for the research engine and search landscapes."""
+"""Pydantic data models for the research engine, search landscapes, and evidence grounding."""
 
+import uuid
 from typing import List, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class SearchResult(BaseModel):
@@ -45,10 +46,39 @@ class ContentStrategy(BaseModel):
     sources: List[str] = []
 
 
+class VerifiedSource(BaseModel):
+    """Enriched, deduplicated, and verified research reference."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    url: str
+    canonical_url: str
+    title: str
+    domain: str
+    snippet: str
+    credibility: str = "Secondary"  # "Primary", "Institutional", "Industry", "Secondary"
+    is_accessible: bool = True
+    http_status: int = 200
+    published_date: Optional[str] = None
+    extracted_claims: List[str] = Field(default_factory=list)
+    relevance_score: float = 1.0
+
+
+class ClaimGrounding(BaseModel):
+    """Specific factual claim tied to evidence and verifiable source."""
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    claim: str
+    source_id: str
+    source_url: str
+    source_title: str
+    credibility_tier: str = "Primary"
+    confidence: float = 1.0
+
+
 class ResearchRun(BaseModel):
     topic: str
     queries: List[str]
     search_landscape: List[SearchLandscape]
     strategy: ContentStrategy
     created_at: str
-    metadata: dict
+    metadata: dict = Field(default_factory=dict)
+    verified_sources: List[VerifiedSource] = Field(default_factory=list)
+    grounded_claims: List[ClaimGrounding] = Field(default_factory=list)

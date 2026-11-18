@@ -1,8 +1,8 @@
-"""Outline generator utilizing AI structured output."""
+"""Outline generator utilizing AI structured output with anti-cliché directives."""
 
 from app.providers.base import AIProvider
 from app.generation.models import GenerationRequest, ArticleOutline
-from app.generation.prompts import OUTLINE_GENERATION_PROMPT, SYSTEM_DEFENSE
+from app.generation.prompts import OUTLINE_GENERATION_PROMPT, ANTI_CLICHE_RULES, SYSTEM_DEFENSE
 from app.projects.service import ProjectService
 from app.content.context import FilteredProjectContext
 
@@ -29,7 +29,8 @@ class OutlineGenerator:
             audience=req.audience or "General Audience",
             content_type=req.content_type or "Article",
             strategy=req.strategy or "None",
-            user_context=req.user_context or "None"
+            user_context=req.user_context or "None",
+            anti_cliche_rules=ANTI_CLICHE_RULES
         )
 
         return self.ai.generate_structured(

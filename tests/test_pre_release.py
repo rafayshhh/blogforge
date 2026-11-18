@@ -20,19 +20,19 @@ from app.providers.gemini import GeminiProvider
 def test_configuration_loading(tmp_path, monkeypatch):
     """Verify configuration loading correctly parses environment variables."""
     fake_env = tmp_path / ".env"
-    fake_env.write_text("TEST_VAR=BLOGFORGE_TEST_OK\nGEMINI_MODEL=gemini-3.7-flash\n", encoding="utf-8")
+    fake_env.write_text("TEST_VAR=BLOGFORGE_TEST_OK\nGEMINI_MODEL=gemini-3.8-flash\n", encoding="utf-8")
     monkeypatch.chdir(tmp_path)
     load_config()
     assert os.getenv("TEST_VAR") == "BLOGFORGE_TEST_OK"
-    assert os.getenv("GEMINI_MODEL") == "gemini-3.7-flash"
+    assert os.getenv("GEMINI_MODEL") == "gemini-3.8-flash"
 
 
 def test_gemini_provider_safe_initialization(monkeypatch):
     """Verify GeminiProvider initializes cleanly with placeholder credentials without making external calls."""
     monkeypatch.setenv("GEMINI_API_KEY", "PLACEHOLDER_SAFE_TEST_KEY_12345")
-    provider = GeminiProvider(api_key="PLACEHOLDER_SAFE_TEST_KEY_12345", default_model="gemini-3.7-flash")
+    provider = GeminiProvider(api_key="PLACEHOLDER_SAFE_TEST_KEY_12345", default_model="gemini-3.8-flash")
     assert provider.api_key == "PLACEHOLDER_SAFE_TEST_KEY_12345"
-    assert provider.default_model == "gemini-3.7-flash"
+    assert provider.default_model == "gemini-3.8-flash"
     assert provider.client is not None
 
 
@@ -175,9 +175,9 @@ def test_desktop_application_startup():
     assert app is not None
     window = MainWindow()
     assert window.windowTitle().startswith("BlogForge")
-    assert window.stack.count() == 4
+    assert window.stack.count() == 5
     # Switch through all tabs
-    for idx in range(4):
+    for idx in range(5):
         window.switch_tab(idx)
         assert window.stack.currentIndex() == idx
     window.close()

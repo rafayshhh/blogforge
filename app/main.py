@@ -14,9 +14,10 @@ def main() -> None:
     load_config()
     setup_logging()
 
-    app = QApplication(sys.argv)
-    app.setStyle("Fusion")
-    apply_theme(app)
+    app = QApplication.instance() or QApplication(sys.argv)
+    if isinstance(app, QApplication):
+        app.setStyle("Fusion")
+        apply_theme(app)
 
     window = MainWindow()
     window.show()

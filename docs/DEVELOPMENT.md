@@ -7,7 +7,11 @@ This guide details how to set up, build, test, and contribute to BlogForge on yo
 ## 1. Prerequisites
 
 - **Python:** 3.11, 3.12, or 3.13 (recommended: Python 3.12).
-- **Google Gemini API Key:** Required for AI operations. Get one at [Google AI Studio](https://aistudio.google.com/).
+- **AI Credentials (at least one):**
+  - Google Gemini API Key: [Google AI Studio](https://aistudio.google.com/)
+  - Anthropic Claude API Key: [Anthropic Console](https://console.anthropic.com/)
+  - OpenAI ChatGPT API Key: [OpenAI Platform](https://platform.openai.com/)
+  - Local endpoint: Ollama, OpenRouter, vLLM, LM Studio, or Cursor proxy.
 - **Git:** Version control.
 
 ---
@@ -46,10 +50,12 @@ Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
-Open `.env` and add your Gemini API key:
+Open `.env` and set your active provider and API key:
 ```env
+AI_PROVIDER=gemini
 GEMINI_API_KEY=your_actual_key_here
-GEMINI_MODEL=gemini-3.7-flash
+GEMINI_MODEL=gemini-3.8-flash
+GEMINI_THINKING_LEVEL=medium
 LOG_LEVEL=DEBUG
 ```
 
@@ -86,11 +92,16 @@ pytest tests/test_generation/test_pipeline.py
 
 ---
 
-## 5. Code Quality & Linting
+## 5. Code Quality & Static Analysis
 
 We enforce PEP 8 style standards using `flake8`:
 ```bash
 flake8 app tests --max-line-length=120
+```
+
+We verify static type correctness across all packages using `mypy`:
+```bash
+mypy app --explicit-package-bases
 ```
 
 ---

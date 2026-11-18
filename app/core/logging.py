@@ -7,7 +7,7 @@ from typing import Optional
 
 def setup_logging(log_level: Optional[str] = None) -> None:
     """Configures application-wide logging handlers and formatters."""
-    level_str = (log_level or os.getenv("LOG_LEVEL", "INFO")).upper()
+    level_str = (log_level or os.getenv("LOG_LEVEL") or "INFO").upper()
     level = getattr(logging, level_str, logging.INFO)
 
     logs_dir = os.path.join(os.getcwd(), "logs")

@@ -39,8 +39,20 @@ class NextJSExporter:
         os.makedirs(target_dir, exist_ok=True)
         fmt = (config.export_format or "JSON").upper()
         ext = ".json" if fmt == "JSON" else ".md"
-        filename = f"{article.slug or 'article'}{ext}"
-        filepath = os.path.join(target_dir, filename)
+
+        # Sanitize slug against directory traversal
+        clean_slug = os.path.basename(article.slug or "article").strip()
+        filename = f"{clean_slug or 'article'}{ext}"
+        filepath = os.path.abspath(os.path.join(target_dir, filename))
+        target_abs = os.path.abspath(target_dir)
+
+        # Enforce strict directory boundary
+        try:
+            common = os.path.commonpath([target_abs, filepath])
+            if common != target_abs:
+                raise ValueError(f"Path traversal detected in slug: {article.slug}")
+        except ValueError:
+            raise ValueError(f"Path traversal detected in slug: {article.slug}")
 
         if fmt == "JSON":
             content = export_json(article)

@@ -1,220 +1,356 @@
-"""Projects and brand profiles management widget."""
+"""Projects and editorial style guide management widget."""
 
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QListWidget, QMessageBox, QTextEdit,
-    QTabWidget, QInputDialog, QComboBox, QCheckBox, QFileDialog
+    QTabWidget, QInputDialog, QCheckBox, QFileDialog, QScrollArea,
+    QFrame
 )
+from PySide6.QtCore import Qt
+
 from app.projects.service import ProjectService
 from app.projects.models import Product, InternalLink
 from app.integrations.nextjs.exporter import NextJSExporter
 
 
 class ProjectsWidget(QWidget):
+    """Management interface for brand style guides, product catalogs, and publishing targets."""
+
     def __init__(self, main_window):
         super().__init__()
         self.main_window = main_window
         self.service = ProjectService()
-        self.layout = QHBoxLayout(self)
-        self.layout.setContentsMargins(32, 32, 32, 32)
+        self.current_project_id = None
 
-        # Left Panel: List
-        left_layout = QVBoxLayout()
-        lbl_head = QLabel("Projects")
-        lbl_head.setObjectName("h1")
+        root_layout = QHBoxLayout(self)
+        root_layout.setContentsMargins(28, 20, 28, 20)
+        root_layout.setSpacing(20)
+
+        # ---------------------------------------------------------------------
+        # 1. Left Panel: Project Library & Selection
+        # ---------------------------------------------------------------------
+        left_panel = QWidget()
+        left_panel.setFixedWidth(270)
+        left_layout = QVBoxLayout(left_panel)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(10)
+
+        lbl_head = QLabel("PROJECT DIRECTORY")
+        lbl_head.setObjectName("sectionHead")
         left_layout.addWidget(lbl_head)
 
         self.project_list = QListWidget()
         self.project_list.itemSelectionChanged.connect(self.load_project)
         left_layout.addWidget(self.project_list)
 
+        left_actions = QHBoxLayout()
+        left_actions.setSpacing(8)
+
         self.btn_new = QPushButton("+ New Project")
+        self.btn_new.setObjectName("primaryBtn")
+        self.btn_new.setFixedHeight(34)
+        self.btn_new.setCursor(Qt.PointingHandCursor)
         self.btn_new.clicked.connect(self.new_project)
-        left_layout.addWidget(self.btn_new)
+        left_actions.addWidget(self.btn_new)
 
-        left_widget = QWidget()
-        left_widget.setLayout(left_layout)
-        left_widget.setFixedWidth(250)
-        self.layout.addWidget(left_widget)
+        btn_delete_proj = QPushButton("Delete")
+        btn_delete_proj.setObjectName("dangerBtn")
+        btn_delete_proj.setFixedHeight(34)
+        btn_delete_proj.clicked.connect(self.delete_project)
+        left_actions.addWidget(btn_delete_proj)
 
-        # Right Panel: Tabs
-        self.right_layout = QVBoxLayout()
-        self.tabs = QTabWidget()
+        left_layout.addLayout(left_actions)
+        root_layout.addWidget(left_panel)
 
-        # --- Tab: Core ---
-        tab_core = QWidget()
-        core_layout = QVBoxLayout(tab_core)
-        self.name_input = QLineEdit()
-        self.desc_input = QTextEdit()
-        core_layout.addWidget(QLabel("Project Name:"))
-        core_layout.addWidget(self.name_input)
-        core_layout.addWidget(QLabel("Project Description:"))
-        core_layout.addWidget(self.desc_input)
+        # ---------------------------------------------------------------------
+        # 2. Right Panel: Editorial Style Guide & Configuration Workspace
+        # ---------------------------------------------------------------------
+        right_container = QWidget()
+        self.right_layout = QVBoxLayout(right_container)
+        self.right_layout.setContentsMargins(0, 0, 0, 0)
+        self.right_layout.setSpacing(12)
 
-        self.brand_tone_input = QLineEdit()
-        core_layout.addWidget(QLabel("Brand Tone (e.g. Professional):"))
-        core_layout.addWidget(self.brand_tone_input)
+        # Workspace Header with Save Trigger
+        top_bar = QHBoxLayout()
+        title_box = QVBoxLayout()
+        title_box.setSpacing(2)
+
+        self.lbl_editing_project = QLabel("Editorial Style Guide & Brand Rules")
+        self.lbl_editing_project.setObjectName("h2")
+        title_box.addWidget(self.lbl_editing_project)
+
+        self.lbl_sub = QLabel("Configure voice, tone guidelines, products, and publishing targets.")
+        self.lbl_sub.setObjectName("caption")
+        title_box.addWidget(self.lbl_sub)
+        top_bar.addLayout(title_box)
+
+        top_bar.addStretch()
 
         self.btn_save = QPushButton("Save Project Settings")
         self.btn_save.setObjectName("primaryBtn")
+        self.btn_save.setFixedHeight(34)
+        self.btn_save.setCursor(Qt.PointingHandCursor)
         self.btn_save.clicked.connect(self.save_project)
-        core_layout.addWidget(self.btn_save)
-        self.tabs.addTab(tab_core, "Core Settings")
+        top_bar.addWidget(self.btn_save)
 
-        # --- Tab: Products ---
-        tab_prod = QWidget()
-        prod_layout = QVBoxLayout(tab_prod)
+        self.right_layout.addLayout(top_bar)
+
+        # Tabs for Configuration
+        self.tabs = QTabWidget()
+
+        # Tab 1: Editorial Style Guide (Brand identity, Voice, Tone, Rules)
+        tab_style_guide = QWidget()
+        sg_scroll = QScrollArea()
+        sg_scroll.setWidgetResizable(True)
+        sg_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        sg_scroll.setStyleSheet("QScrollArea { background-color: transparent; border: none; }")
+
+        sg_inner = QWidget()
+        sg_layout = QVBoxLayout(sg_inner)
+        sg_layout.setContentsMargins(18, 16, 18, 16)
+        sg_layout.setSpacing(14)
+
+        # Project Name
+        lbl_pname = QLabel("Project & Brand Name *")
+        lbl_pname.setObjectName("caption")
+        sg_layout.addWidget(lbl_pname)
+        self.name_input = QLineEdit()
+        self.name_input.setPlaceholderText("e.g. Acme Tech Insights")
+        self.name_input.setFixedHeight(34)
+        sg_layout.addWidget(self.name_input)
+
+        # Description / Mission
+        lbl_desc = QLabel("Mission, Positioning & Brand Summary")
+        lbl_desc.setObjectName("caption")
+        sg_layout.addWidget(lbl_desc)
+        self.desc_input = QTextEdit()
+        self.desc_input.setPlaceholderText("Describe the core mission, brand identity, and editorial objective...")
+        self.desc_input.setFixedHeight(75)
+        sg_layout.addWidget(self.desc_input)
+
+        # Target Audience
+        lbl_aud = QLabel("Target Audience & Reader Persona")
+        lbl_aud.setObjectName("caption")
+        sg_layout.addWidget(lbl_aud)
+        self.audience_input = QLineEdit()
+        self.audience_input.setPlaceholderText("e.g. Senior Backend Engineers, CTOs, Technical Architects")
+        self.audience_input.setFixedHeight(34)
+        sg_layout.addWidget(self.audience_input)
+
+        # Voice and Tone
+        lbl_tone = QLabel("Editorial Voice & Tone Guidelines")
+        lbl_tone.setObjectName("caption")
+        sg_layout.addWidget(lbl_tone)
+        self.brand_tone_input = QLineEdit()
+        self.brand_tone_input.setPlaceholderText("e.g. Pragmatic, authoritative, analytical, concise")
+        self.brand_tone_input.setFixedHeight(34)
+        sg_layout.addWidget(self.brand_tone_input)
+
+        # Writing Guidelines & Restrictions
+        lbl_rules = QLabel("Editorial Rules, Preferred Terminology & Restrictions")
+        lbl_rules.setObjectName("caption")
+        sg_layout.addWidget(lbl_rules)
+        self.editorial_rules_input = QTextEdit()
+        self.editorial_rules_input.setPlaceholderText(
+            "List specific guidelines, phrases to use, buzzwords to avoid, and editorial standards..."
+        )
+        self.editorial_rules_input.setFixedHeight(85)
+        sg_layout.addWidget(self.editorial_rules_input)
+
+        sg_layout.addStretch()
+        sg_scroll.setWidget(sg_inner)
+
+        tab_style_layout = QVBoxLayout(tab_style_guide)
+        tab_style_layout.setContentsMargins(0, 0, 0, 0)
+        tab_style_layout.addWidget(sg_scroll)
+        self.tabs.addTab(tab_style_guide, "Editorial Style Guide")
+
+        # Tab 2: Product Catalog
+        tab_products = QWidget()
+        prod_layout = QVBoxLayout(tab_products)
+        prod_layout.setContentsMargins(18, 16, 18, 16)
+        prod_layout.setSpacing(10)
+
+        lbl_prod_info = QLabel("Indexed Products & Features for Contextual Mention")
+        lbl_prod_info.setObjectName("caption")
+        prod_layout.addWidget(lbl_prod_info)
+
         self.prod_list = QListWidget()
-        prod_layout.addWidget(QLabel("Products / Services associated with this brand:"))
         prod_layout.addWidget(self.prod_list)
 
-        p_btns = QHBoxLayout()
+        prod_btn_row = QHBoxLayout()
         btn_add_prod = QPushButton("+ Add Product")
+        btn_add_prod.setFixedHeight(32)
         btn_add_prod.clicked.connect(self.add_product)
-        btn_del_prod = QPushButton("Delete Product")
+        prod_btn_row.addWidget(btn_add_prod)
+
+        btn_del_prod = QPushButton("Remove Selected")
+        btn_del_prod.setObjectName("dangerBtn")
+        btn_del_prod.setFixedHeight(32)
         btn_del_prod.clicked.connect(self.del_product)
-        p_btns.addWidget(btn_add_prod)
-        p_btns.addWidget(btn_del_prod)
-        prod_layout.addLayout(p_btns)
-        self.tabs.addTab(tab_prod, "Products")
+        prod_btn_row.addWidget(btn_del_prod)
+        prod_btn_row.addStretch()
+        prod_layout.addLayout(prod_btn_row)
 
-        # --- Tab: URLs ---
-        tab_url = QWidget()
-        url_layout = QVBoxLayout(tab_url)
+        self.tabs.addTab(tab_products, "Product Catalog")
+
+        # Tab 3: Internal Links Inventory
+        tab_links = QWidget()
+        link_layout = QVBoxLayout(tab_links)
+        link_layout.setContentsMargins(18, 16, 18, 16)
+        link_layout.setSpacing(10)
+
+        lbl_link_info = QLabel("Target Internal URLs for Organic Cross-Linking")
+        lbl_link_info.setObjectName("caption")
+        link_layout.addWidget(lbl_link_info)
+
         self.url_list = QListWidget()
-        url_layout.addWidget(QLabel("Internal URLs used for linking:"))
-        url_layout.addWidget(self.url_list)
+        link_layout.addWidget(self.url_list)
 
-        u_btns = QHBoxLayout()
-        btn_add_url = QPushButton("+ Add URL")
-        btn_add_url.clicked.connect(self.add_url)
-        btn_del_url = QPushButton("Delete URL")
-        btn_del_url.clicked.connect(self.del_url)
-        u_btns.addWidget(btn_add_url)
-        u_btns.addWidget(btn_del_url)
-        url_layout.addLayout(u_btns)
-        self.tabs.addTab(tab_url, "Internal Links")
+        link_btn_row = QHBoxLayout()
+        btn_add_link = QPushButton("+ Add Internal Link")
+        btn_add_link.setFixedHeight(32)
+        btn_add_link.clicked.connect(self.add_url)
+        link_btn_row.addWidget(btn_add_link)
 
-        # --- Tab: Integrations ---
-        tab_int = QWidget()
-        int_layout = QVBoxLayout(tab_int)
+        btn_del_link = QPushButton("Remove Selected")
+        btn_del_link.setObjectName("dangerBtn")
+        btn_del_link.setFixedHeight(32)
+        btn_del_link.clicked.connect(self.del_url)
+        link_btn_row.addWidget(btn_del_link)
+        link_btn_row.addStretch()
+        link_layout.addLayout(link_btn_row)
 
-        self.nextjs_enabled = QCheckBox("Enable Next.js Integration")
-        int_layout.addWidget(self.nextjs_enabled)
+        self.tabs.addTab(tab_links, "Internal Links")
 
-        self.nextjs_proj_dir = QLineEdit()
+        # Tab 4: Publishing & Next.js Target
+        tab_publish = QWidget()
+        pub_layout = QVBoxLayout(tab_publish)
+        pub_layout.setContentsMargins(18, 16, 18, 16)
+        pub_layout.setSpacing(14)
+
+        self.nextjs_enabled = QCheckBox("Enable automated Next.js blog sync on export")
+        pub_layout.addWidget(self.nextjs_enabled)
+
+        lbl_cont = QLabel("Next.js Content Directory Path (e.g. apps/web/content/posts)")
+        lbl_cont.setObjectName("caption")
+        pub_layout.addWidget(lbl_cont)
+
+        row_cont = QHBoxLayout()
         self.nextjs_content_dir = QLineEdit()
+        self.nextjs_content_dir.setFixedHeight(34)
+        row_cont.addWidget(self.nextjs_content_dir)
 
-        def browse_proj():
-            d = QFileDialog.getExistingDirectory(self, "Select Next.js Project Directory")
-            if d:
-                self.nextjs_proj_dir.setText(d)
+        btn_pick_cont = QPushButton("Browse...")
+        btn_pick_cont.setFixedHeight(34)
+        btn_pick_cont.clicked.connect(lambda: self.browse_directory(self.nextjs_content_dir))
+        row_cont.addWidget(btn_pick_cont)
+        pub_layout.addLayout(row_cont)
 
-        def browse_content():
-            d = QFileDialog.getExistingDirectory(self, "Select Next.js Content Directory")
-            if d:
-                self.nextjs_content_dir.setText(d)
+        lbl_img = QLabel("Next.js Public Media Directory (e.g. apps/web/public/images/blog)")
+        lbl_img.setObjectName("caption")
+        pub_layout.addWidget(lbl_img)
 
-        btn_b_proj = QPushButton("Browse...")
-        btn_b_proj.clicked.connect(browse_proj)
-        btn_b_cont = QPushButton("Browse...")
-        btn_b_cont.clicked.connect(browse_content)
+        row_img = QHBoxLayout()
+        self.nextjs_images_dir = QLineEdit()
+        self.nextjs_images_dir.setFixedHeight(34)
+        row_img.addWidget(self.nextjs_images_dir)
 
-        l1 = QHBoxLayout()
-        l1.addWidget(self.nextjs_proj_dir)
-        l1.addWidget(btn_b_proj)
+        btn_pick_img = QPushButton("Browse...")
+        btn_pick_img.setFixedHeight(34)
+        btn_pick_img.clicked.connect(lambda: self.browse_directory(self.nextjs_images_dir))
+        row_img.addWidget(btn_pick_img)
+        pub_layout.addLayout(row_img)
 
-        l2 = QHBoxLayout()
-        l2.addWidget(self.nextjs_content_dir)
-        l2.addWidget(btn_b_cont)
-
-        int_layout.addWidget(QLabel("Next.js Project Directory:"))
-        int_layout.addLayout(l1)
-        int_layout.addWidget(QLabel("Next.js Content Directory:"))
-        int_layout.addLayout(l2)
-
-        self.nextjs_format = QComboBox()
-        self.nextjs_format.addItems(["JSON", "MARKDOWN"])
-        int_layout.addWidget(QLabel("Export Format:"))
-        int_layout.addWidget(self.nextjs_format)
-
-        self.btn_test_nextjs = QPushButton("Test Project")
+        self.btn_test_nextjs = QPushButton("Verify Next.js Directory Access")
+        self.btn_test_nextjs.setFixedHeight(34)
         self.btn_test_nextjs.clicked.connect(self.test_nextjs)
-        int_layout.addWidget(self.btn_test_nextjs)
-        int_layout.addStretch()
+        pub_layout.addWidget(self.btn_test_nextjs)
 
-        self.tabs.addTab(tab_int, "Integrations")
+        pub_layout.addStretch()
+        self.tabs.addTab(tab_publish, "Publishing Integration")
 
         self.right_layout.addWidget(self.tabs)
-        self.layout.addLayout(self.right_layout)
+        root_layout.addWidget(right_container, 1)
 
-        self.current_project_id = None
-        self.refresh_list()
+        self.refresh_projects()
 
-    def refresh_list(self):
+    def refresh_projects(self):
+        """Reloads project list from service."""
         self.project_list.blockSignals(True)
         self.project_list.clear()
         projects = self.service.list_projects()
-        selected_idx = -1
-        for idx, p in enumerate(projects):
+        for p in projects:
             self.project_list.addItem(p.name)
-            item = self.project_list.item(idx)
-            item.setData(32, p.id)
-            if self.current_project_id == p.id:
-                selected_idx = idx
-        self.project_list.blockSignals(False)
-        if selected_idx >= 0:
-            self.project_list.setCurrentRow(selected_idx)
-        self.main_window.refresh_project_switcher()
+
+        if projects:
+            self.project_list.setCurrentRow(0)
+            self.project_list.blockSignals(False)
+            self.load_project()
+        else:
+            self.project_list.blockSignals(False)
+            self.new_project()
+
+    def load_project(self):
+        """Loads selected project details into the form."""
+        row = self.project_list.currentRow()
+        projects = self.service.list_projects()
+        if 0 <= row < len(projects):
+            p = projects[row]
+            self.current_project_id = p.id
+            self.name_input.setText(p.name)
+            self.desc_input.setPlainText(p.description or "")
+            self.brand_tone_input.setText(p.brand_profile.tone or "")
+            self.audience_input.setText(p.brand_profile.target_audience or "")
+            self.editorial_rules_input.setPlainText(p.brand_profile.writing_style or "")
+
+            self.lbl_editing_project.setText(f"Editorial Style Guide: {p.name}")
+
+            # Populate products
+            self.prod_list.clear()
+            for prod in p.products:
+                self.prod_list.addItem(f"{prod.name} — {prod.description or ''}")
+
+            # Populate URLs
+            self.url_list.clear()
+            for url in p.internal_links:
+                self.url_list.addItem(f"{url.title} ({url.url})")
+
+            # Next.js Settings
+            if p.nextjs_integration:
+                self.nextjs_enabled.setChecked(p.nextjs_integration.enabled)
+                self.nextjs_content_dir.setText(p.nextjs_integration.content_directory or "")
+                self.nextjs_images_dir.setText(p.nextjs_integration.image_directory or "")
+            else:
+                self.nextjs_enabled.setChecked(False)
+                self.nextjs_content_dir.clear()
+                self.nextjs_images_dir.clear()
 
     def new_project(self):
+        """Resets the form to create a new project."""
         self.current_project_id = None
         self.name_input.clear()
         self.desc_input.clear()
         self.brand_tone_input.clear()
+        self.audience_input.clear()
+        self.editorial_rules_input.clear()
         self.prod_list.clear()
         self.url_list.clear()
-        self.project_list.clearSelection()
         self.nextjs_enabled.setChecked(False)
-        self.nextjs_proj_dir.clear()
         self.nextjs_content_dir.clear()
-        self.nextjs_format.setCurrentIndex(0)
-
-    def load_project(self):
-        items = self.project_list.selectedItems()
-        if not items:
-            return
-
-        pid = items[0].data(32)
-        proj = self.service.get_project(pid)
-        if proj:
-            self.current_project_id = proj.id
-            self.name_input.setText(proj.name)
-            self.desc_input.setPlainText(proj.description or "")
-            self.brand_tone_input.setText(proj.brand_profile.tone)
-
-            self.prod_list.clear()
-            for prod in proj.products:
-                self.prod_list.addItem(f"{prod.name} - {prod.description}")
-                item = self.prod_list.item(self.prod_list.count() - 1)
-                item.setData(32, prod.id)
-
-            self.url_list.clear()
-            for url in proj.internal_links:
-                self.url_list.addItem(f"{url.title} ({url.url})")
-                item = self.url_list.item(self.url_list.count() - 1)
-                item.setData(32, url.id)
-
-            self.nextjs_enabled.setChecked(proj.nextjs_integration.enabled)
-            self.nextjs_proj_dir.setText(proj.nextjs_integration.project_directory or "")
-            self.nextjs_content_dir.setText(proj.nextjs_integration.content_directory or "")
-            self.nextjs_format.setCurrentText(proj.nextjs_integration.export_format)
+        self.nextjs_images_dir.clear()
+        self.lbl_editing_project.setText("Create New Project & Style Guide")
+        self.name_input.setFocus()
 
     def save_project(self):
+        """Saves current project form."""
         name = self.name_input.text().strip()
         if not name:
-            QMessageBox.warning(self, "Error", "Name is required")
+            QMessageBox.warning(self, "Validation Error", "Project name is required.")
             return
+
+        desc = self.desc_input.toPlainText().strip()
+        tone = self.brand_tone_input.text().strip()
 
         if self.current_project_id:
             proj = self.service.get_project(self.current_project_id)
@@ -222,28 +358,122 @@ class ProjectsWidget(QWidget):
                 QMessageBox.warning(self, "Error", "Project not found.")
                 return
             proj.name = name
-            proj.description = self.desc_input.toPlainText()
-            proj.brand_profile.tone = self.brand_tone_input.text()
+            proj.description = desc
+            proj.brand_profile.tone = tone
+            proj.brand_profile.target_audience = self.audience_input.text().strip()
+            proj.brand_profile.writing_style = self.editorial_rules_input.toPlainText().strip()
 
             proj.nextjs_integration.enabled = self.nextjs_enabled.isChecked()
-            proj.nextjs_integration.project_directory = self.nextjs_proj_dir.text()
-            proj.nextjs_integration.content_directory = self.nextjs_content_dir.text()
-            proj.nextjs_integration.export_format = self.nextjs_format.currentText()
+            proj.nextjs_integration.content_directory = self.nextjs_content_dir.text().strip()
+            proj.nextjs_integration.image_directory = self.nextjs_images_dir.text().strip()
 
             self.service.update_project(proj)
         else:
-            proj = self.service.create_project(name=name, description=self.desc_input.toPlainText())
-            proj.brand_profile.tone = self.brand_tone_input.text()
+            proj = self.service.create_project(name=name, description=desc)
+            proj.brand_profile.tone = tone
+            proj.brand_profile.target_audience = self.audience_input.text().strip()
+            proj.brand_profile.writing_style = self.editorial_rules_input.toPlainText().strip()
 
             proj.nextjs_integration.enabled = self.nextjs_enabled.isChecked()
-            proj.nextjs_integration.project_directory = self.nextjs_proj_dir.text()
-            proj.nextjs_integration.content_directory = self.nextjs_content_dir.text()
-            proj.nextjs_integration.export_format = self.nextjs_format.currentText()
+            proj.nextjs_integration.content_directory = self.nextjs_content_dir.text().strip()
+            proj.nextjs_integration.image_directory = self.nextjs_images_dir.text().strip()
 
             self.service.update_project(proj)
             self.current_project_id = proj.id
 
-        self.refresh_list()
+        self.refresh_projects()
+        if self.main_window and hasattr(self.main_window, "refresh_project_switcher"):
+            self.main_window.refresh_project_switcher()
+
+    def delete_project(self):
+        """Deletes the active project."""
+        if not self.current_project_id:
+            return
+        ans = QMessageBox.question(
+            self, "Confirm Delete",
+            "Are you sure you want to permanently delete this project and style guide?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if ans == QMessageBox.Yes:
+            self.service.repo.delete(self.current_project_id)
+            self.refresh_projects()
+            if self.main_window and hasattr(self.main_window, "refresh_project_switcher"):
+                self.main_window.refresh_project_switcher()
+
+    def add_product(self):
+        """Adds a product via prompt or dialog."""
+        if not self.current_project_id:
+            QMessageBox.warning(self, "Save First", "Please save the project first.")
+            return
+
+        name, ok1 = QInputDialog.getText(self, "Product", "Product Name:")
+        if not ok1 or not name:
+            return
+        desc, ok2 = QInputDialog.getText(self, "Product", "Product Description:")
+        if not ok2:
+            return
+
+        proj = self.service.get_project(self.current_project_id)
+        if not proj:
+            return
+        proj.products.append(Product(name=name, description=desc))
+        self.service.update_project(proj)
+        self.load_project()
+
+    def del_product(self):
+        if not self.current_project_id:
+            return
+        row = self.prod_list.currentRow()
+        if row < 0:
+            return
+        proj = self.service.get_project(self.current_project_id)
+        if not proj or row >= len(proj.products):
+            return
+        proj.products.pop(row)
+        self.service.update_project(proj)
+        self.load_project()
+
+    def add_url(self):
+        """Adds an internal URL via prompt or dialog."""
+        if not self.current_project_id:
+            QMessageBox.warning(self, "Save First", "Please save the project first.")
+            return
+
+        title, ok1 = QInputDialog.getText(self, "Link Title", "Link Title:")
+        if not ok1 or not title:
+            return
+        url, ok2 = QInputDialog.getText(self, "Target URL", "Link URL (http://... or /...):")
+        if not ok2 or not url:
+            return
+
+        try:
+            link = InternalLink(title=title, url=url)
+            proj = self.service.get_project(self.current_project_id)
+            if not proj:
+                return
+            proj.internal_links.append(link)
+            self.service.update_project(proj)
+            self.load_project()
+        except Exception as e:
+            QMessageBox.warning(self, "Invalid URL", f"Please enter a valid URL: {e}")
+
+    def del_url(self):
+        if not self.current_project_id:
+            return
+        row = self.url_list.currentRow()
+        if row < 0:
+            return
+        proj = self.service.get_project(self.current_project_id)
+        if not proj or row >= len(proj.internal_links):
+            return
+        proj.internal_links.pop(row)
+        self.service.update_project(proj)
+        self.load_project()
+
+    def browse_directory(self, target_line_edit: QLineEdit):
+        folder = QFileDialog.getExistingDirectory(self, "Select Directory")
+        if folder:
+            target_line_edit.setText(folder)
 
     def test_nextjs(self):
         if not self.current_project_id:
@@ -254,79 +484,10 @@ class ProjectsWidget(QWidget):
         if not proj:
             QMessageBox.warning(self, "Error", "Project not found.")
             return
+
         exporter = NextJSExporter()
         try:
             exporter.test_connection(proj)
-            QMessageBox.information(self, "Success", "✓ Looks good! Directory is writable.")
+            QMessageBox.information(self, "Success", "Looks good! Directory is writable.")
         except Exception as e:
             QMessageBox.warning(self, "Test Failed", str(e))
-
-    def add_product(self):
-        if not self.current_project_id:
-            QMessageBox.warning(self, "Save First", "Please save the project first.")
-            return
-        name, ok1 = QInputDialog.getText(self, "Product", "Product Name:")
-        if not ok1 or not name:
-            return
-        desc, ok2 = QInputDialog.getText(self, "Product", "Product Description:")
-        if not ok2:
-            return
-
-        proj = self.service.get_project(self.current_project_id)
-        if not proj:
-            QMessageBox.warning(self, "Error", "Project not found.")
-            return
-        proj.products.append(Product(name=name, description=desc))
-        self.service.update_project(proj)
-        self.load_project()
-
-    def del_product(self):
-        if not self.current_project_id:
-            return
-        sel = self.prod_list.selectedItems()
-        if not sel:
-            return
-        pid = sel[0].data(32)
-        proj = self.service.get_project(self.current_project_id)
-        if not proj:
-            return
-        proj.products = [p for p in proj.products if p.id != pid]
-        self.service.update_project(proj)
-        self.load_project()
-
-    def add_url(self):
-        if not self.current_project_id:
-            QMessageBox.warning(self, "Save First", "Please save the project first.")
-            return
-        title, ok1 = QInputDialog.getText(self, "URL", "Link Title:")
-        if not ok1 or not title:
-            return
-        url, ok2 = QInputDialog.getText(self, "URL", "Link URL (http://... or /...):")
-        if not ok2 or not url:
-            return
-
-        try:
-            link = InternalLink(title=title, url=url)
-            proj = self.service.get_project(self.current_project_id)
-            if not proj:
-                QMessageBox.warning(self, "Error", "Project not found.")
-                return
-            proj.internal_links.append(link)
-            self.service.update_project(proj)
-            self.load_project()
-        except Exception as e:
-            QMessageBox.warning(self, "Invalid URL", f"Please enter a valid URL. Error: {e}")
-
-    def del_url(self):
-        if not self.current_project_id:
-            return
-        sel = self.url_list.selectedItems()
-        if not sel:
-            return
-        uid = sel[0].data(32)
-        proj = self.service.get_project(self.current_project_id)
-        if not proj:
-            return
-        proj.internal_links = [item for item in proj.internal_links if item.id != uid]
-        self.service.update_project(proj)
-        self.load_project()

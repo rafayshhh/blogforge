@@ -4,17 +4,36 @@ While BlogForge includes a full PySide6 desktop GUI, its core engines can also b
 
 ---
 
-## 1. Generation Pipeline
+## 1. Provider Factory & Resolution
 
-The `GenerationPipeline` orchestrates outline generation, section drafting, and fact-checking.
+BlogForge provides a centralized factory to create and resolve AI providers dynamically.
 
 ```python
-from app.providers.gemini import GeminiProvider
+from app.providers.factory import create_provider, resolve_active_provider
+
+# Option A: Explicit instantiation
+provider = create_provider("anthropic", api_key="sk-ant-...", model="claude-3-5-sonnet-20241022")
+# or: provider = create_provider("openai", api_key="sk-...", model="gpt-4o")
+# or: provider = create_provider("gemini", api_key="AIzaSy...", model="gemini-3.8-flash")
+# or: provider = create_provider("cursor", base_url="http://localhost:11434/v1", model="llama3.3")
+
+# Option B: Automatic resolution based on environment configuration
+active_provider = resolve_active_provider()
+```
+
+---
+
+## 2. Generation Pipeline
+
+The `GenerationPipeline` orchestrates outline generation, section drafting, anti-slop guidelines, and quality reviews.
+
+```python
+from app.providers.factory import create_provider
 from app.generation.pipeline import GenerationPipeline
 from app.generation.models import GenerationRequest
 
 # Initialize AI provider
-provider = GeminiProvider(api_key="YOUR_API_KEY", default_model="gemini-3.7-flash")
+provider = create_provider("gemini", api_key="YOUR_API_KEY", model="gemini-3.8-flash")
 pipeline = GenerationPipeline(provider)
 
 # Define request
@@ -35,14 +54,14 @@ article = pipeline.generate_article(
     progress_callback=lambda msg: print(f"Progress: {msg}")
 )
 
-# Step 3: Finalize (Generates FAQs, SEO tags, and saves to data/articles)
+# Step 3: Finalize (Runs heuristic quality review, generates FAQs, SEO tags, and saves to data/articles)
 final_article = pipeline.finalize_article(article, req)
 print(f"Article saved! Total length: {len(final_article.content)} chars.")
 ```
 
 ---
 
-## 2. Research Engine
+## 3. Research Engine
 
 The `ResearchEngine` generates targeted search queries, compiles search landscapes, and derives strategic angles.
 
@@ -65,7 +84,7 @@ for gap in run.strategy.content_gaps:
 
 ---
 
-## 3. Project & Brand Service
+## 4. Project & Brand Service
 
 Manage brand rules, products, and internal linking strategies.
 
@@ -97,7 +116,7 @@ service.update_project(project)
 
 ---
 
-## 4. Multi-Format Exporters
+## 5. Multi-Format Exporters
 
 Convert `Article` domain objects into destination formats.
 

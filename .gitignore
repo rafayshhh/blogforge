@@ -155,3 +155,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Temporary scratch verification scripts
+scratch/

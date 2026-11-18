@@ -1,4 +1,4 @@
-"""Multi-stage article generation pipeline orchestrator."""
+"""Multi-stage article generation pipeline orchestrator with flow continuity and source tracking."""
 
 import datetime
 import os
@@ -10,6 +10,8 @@ from app.models.article import Article, ArticleSection
 from app.generation.outline import OutlineGenerator
 from app.generation.writer import ArticleWriter
 from app.generation.reviewer import ArticleReviewer
+from app.projects.service import ProjectService
+from app.content.context import FilteredProjectContext
 
 
 class GenerationPipeline:
@@ -18,6 +20,7 @@ class GenerationPipeline:
         self.outline_gen = OutlineGenerator(self.ai)
         self.writer = ArticleWriter(self.ai)
         self.reviewer = ArticleReviewer(self.ai)
+        self.project_service = ProjectService()
         self.is_cancelled = False
         self.run_id = str(uuid.uuid4())
 
@@ -41,12 +44,24 @@ class GenerationPipeline:
             content="",
             sections=[],
             faq=[],
-            sources=[],
+            sources=list(req.verified_sources) if req.verified_sources else [],
             internal_links=[],
             seo={}
         )
 
+        # Pre-cache project context for the entire pipeline run
+        if req.project_id:
+            proj = self.project_service.get_project(req.project_id)
+            if proj:
+                filtered_ctx = FilteredProjectContext(proj, req.topic)
+                self.writer.set_cached_context(
+                    project_id=req.project_id,
+                    context_txt=filtered_ctx.format_for_prompt(),
+                    avoided_terms=proj.brand_profile.avoided_terms
+                )
+
         full_markdown = f"# {outline.title}\n\n"
+        previous_context = ""
 
         for idx, sec in enumerate(outline.sections):
             if self.is_cancelled:
@@ -56,11 +71,24 @@ class GenerationPipeline:
 
             if progress_callback:
                 progress_callback(f"Writing section {idx + 1} of {len(outline.sections)}: {sec.heading}")
-            content = self.writer.write_section(sec, req)
+
+            content = self.writer.write_section(sec, req, previous_context=previous_context)
+
+            # Extract concluding thoughts to pass into next section for natural continuity
+            content_lines = [
+                line.strip() for line in content.splitlines()
+                if line.strip() and not line.strip().startswith("#")
+            ]
+            previous_context = content_lines[-1] if content_lines else sec.heading
 
             # Use the actual heading level from the outline
             prefix = "#" * min(max(sec.level, 1), 6)
             full_markdown += f"\n{prefix} {sec.heading}\n\n{content}\n"
+
+            # Track section sources in article sources collection
+            for s in sec.sources:
+                if s and s not in article.sources:
+                    article.sources.append(s)
 
             article.sections.append(ArticleSection(
                 id=sec.id,
@@ -119,7 +147,18 @@ class GenerationPipeline:
             return None
         if progress_callback:
             progress_callback("Reviewing article...")
-        return self.reviewer.review_article(req.topic, article.content)
+
+        avoided = []
+        if req.project_id:
+            proj = self.project_service.get_project(req.project_id)
+            if proj:
+                avoided = proj.brand_profile.avoided_terms
+
+        return self.reviewer.review_article(
+            topic=req.topic,
+            content=article.content,
+            avoided_terms=avoided
+        )
 
     def _save_intermediate(self, article: Article):
         os.makedirs("data/generation", exist_ok=True)

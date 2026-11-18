@@ -50,12 +50,13 @@ BlogForge is designed around four core architectural principles:
 +------------------------------------+  +------------------------------------+
 |         PERSISTENCE LAYER          |  |          PROVIDER LAYER            |
 |                                    |  |                                    |
-| - ProjectRepository (Local JSON)   |  | - AIProvider (Abstract Interface)  |
-| - File Exporters:                  |  | - GeminiProvider (Google GenAI SDK)|
-|   * Markdown Exporter              |  | - SearchProvider (Abstract)        |
-|   * HTML Exporter                  |  | - MockSearchProvider               |
-|   * JSON Exporter                  |  |                                    |
-|   * NextJSExporter (SSG sync)      |  |                                    |
+| - ProjectRepository (Local JSON)   |  | - AIProvider (Abstract Base)       |
+| - File Exporters:                  |  | - GeminiProvider (google-genai)    |
+|   * Markdown Exporter              |  | - AnthropicProvider (anthropic)    |
+|   * HTML Exporter                  |  | - OpenAIProvider (openai)          |
+|   * JSON Exporter                  |  | - CustomOpenAIProvider (Cursor)    |
+|   * NextJSExporter (SSG sync)      |  | - Provider Factory & Resolution    |
+|                                    |  | - SearchProvider (Mock / Pluggable)|
 +------------------------------------+  +------------------------------------+
 ```
 
@@ -80,13 +81,17 @@ To prevent token waste and irrelevant mentions, `FilteredProjectContext` analyze
 Article generation follows a strict multi-step workflow:
 1. **Outline Generation (`OutlineGenerator`):** Transforms topic and project context into a structured `ArticleOutline` with purpose notes and key points per section.
 2. **Iterative Section Writing (`ArticleWriter`):** Generates each section independently, avoiding context length bottlenecks and enabling real-time UI progress updates and intermediate saving.
-3. **Fact-Checking & Quality Audit (`ArticleReviewer`):** Scans the draft for unsupported claims, repetition, and value-add opportunities.
-4. **FAQ Synthesis:** Extracts logical reader questions and synthesizes concise answers.
-5. **Persistence:** Saves the completed artifact to `data/articles/{run_id}.json` and purges partial drafts.
+3. **Anti-AI Slop Enforcement:** Systematic prompts ban 35+ buzzwords, require concrete technical mechanics, prohibit rhetorical question openings, and enforce sentence variety.
+4. **Heuristic Quality Review (`ArticleReviewer`):** Scans drafts for machine clichés, repeated n-grams, duplicate paragraphs, and brand vocabulary compliance.
+5. **FAQ Synthesis:** Extracts logical reader questions and synthesizes concise answers.
+6. **Persistence:** Saves the completed artifact to `data/articles/{run_id}.json` and purges partial drafts.
 
-### 3.4 Provider Integration (`app/providers/`)
-The AI provider layer decouples the application from vendor SDKs:
-- Uses Google's official `google-genai` SDK.
-- Employs thinking budgets for Gemini 3.x models (`thinking_level="medium"`).
-- Uses native JSON schema output (`response_mime_type="application/json"`).
-- Implements exponential backoff retry loops on transient HTTP 429 and 5xx errors via `tenacity` patterns.
+### 3.4 Multi-Provider AI Architecture (`app/providers/`)
+The AI provider layer decouples business logic from specific vendor implementations through an extensible abstract interface:
+- **`AIProvider`:** Abstract base defining `generate()`, `generate_structured()`, `diagnose_connection()`, and `list_available_models()`.
+- **`GeminiProvider`:** Uses Google's official `google-genai` SDK. Supports Gemini 3.8/3.5 and 4 series with thinking budgets (`thinking_level="medium"`) and native structured JSON schemas.
+- **`AnthropicProvider`:** Uses `anthropic` SDK with tool-calling structured output for Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku, and Opus.
+- **`OpenAIProvider`:** Uses `openai` SDK with developer message handling for reasoning models (o1, o3-mini) and beta structured output parsing for GPT-4o.
+- **`CustomOpenAIProvider`:** Supports arbitrary `base_url` and custom model strings for Cursor proxies, Ollama, OpenRouter, vLLM, and LM Studio.
+- **Factory & Resolver (`app/providers/factory.py`):** Centralizes instantiation and dynamic environment resolution via `resolve_active_provider()`.
+- **Resilience:** All network calls implement exponential backoff retry loops on transient HTTP 429 and 5xx errors via `tenacity`.
