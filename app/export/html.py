@@ -1,6 +1,7 @@
 """HTML export utility for Article models with safe HTML entity escaping."""
 
 import html
+import re
 from app.models.article import Article
 
 
@@ -18,9 +19,15 @@ def export_html(article: Article) -> str:
             paragraphs = [p.strip() for p in sec.content.split("\n\n") if p.strip()]
             for p in paragraphs:
                 elements.append(f"<p>{html.escape(p)}</p>")
-    elif article.content:
+    elif article.content and article.content.strip():
         paragraphs = [p.strip() for p in article.content.split("\n\n") if p.strip()]
         for p in paragraphs:
+            if p.startswith("#"):
+                m = re.match(r"^(#{1,6})\s+(.*)$", p)
+                if m:
+                    lvl = len(m.group(1))
+                    elements.append(f"<h{lvl}>{html.escape(m.group(2))}</h{lvl}>")
+                    continue
             elements.append(f"<p>{html.escape(p)}</p>")
 
     if article.faq:

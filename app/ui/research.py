@@ -1,6 +1,8 @@
 """Research workspace widget connecting topic intelligence, search landscapes, and editorial strategy."""
 
 import os
+import uuid
+import json
 from typing import Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
@@ -108,8 +110,18 @@ class ResearchWidget(QWidget):
         left_layout.addWidget(lbl_queries)
 
         self.queries_list = QListWidget()
-        self.queries_list.setFixedHeight(120)
+        self.queries_list.setFixedHeight(110)
         left_layout.addWidget(self.queries_list)
+
+        # Past Research Runs History
+        lbl_history = QLabel("PAST RESEARCH RUNS")
+        lbl_history.setObjectName("sectionHead")
+        left_layout.addWidget(lbl_history)
+
+        self.history_combo = QComboBox()
+        self.history_combo.setFixedHeight(30)
+        self.history_combo.currentIndexChanged.connect(self.load_selected_history_run)
+        left_layout.addWidget(self.history_combo)
 
         left_layout.addStretch()
         layout.addWidget(left_panel)
@@ -187,6 +199,8 @@ class ResearchWidget(QWidget):
         right_layout.addWidget(self.tabs)
         layout.addWidget(right_panel, 1)
 
+        self.refresh_previous_runs()
+
     def start_research(self):
         topic = self.topic_input.text().strip()
         if not topic:
@@ -231,7 +245,56 @@ class ResearchWidget(QWidget):
             return
 
         self.current_run = result
+        self.save_research_run(result)
         self.display_research_run(result)
+        self.refresh_previous_runs()
+        if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):
+            self.main_window.refresh_dashboard_state()
+
+    def save_research_run(self, run: ResearchRun) -> None:
+        """Persists the ResearchRun to local JSON storage."""
+        run_id = str(uuid.uuid4())
+        path = os.path.join(self.research_dir, f"{run_id}.json")
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(run.model_dump_json(indent=2))
+        except Exception:
+            pass
+
+    def refresh_previous_runs(self) -> None:
+        """Populates the history combo box with saved research runs."""
+        self.history_combo.blockSignals(True)
+        self.history_combo.clear()
+        self.history_combo.addItem("Select previous research run...", None)
+
+        if os.path.exists(self.research_dir):
+            for fname in sorted(os.listdir(self.research_dir), reverse=True):
+                if fname.endswith(".json"):
+                    fpath = os.path.join(self.research_dir, fname)
+                    try:
+                        with open(fpath, "r", encoding="utf-8") as f:
+                            data = json.load(f)
+                        topic = data.get("topic", fname)
+                        self.history_combo.addItem(topic, fpath)
+                    except Exception:
+                        continue
+
+        self.history_combo.blockSignals(False)
+
+    def load_selected_history_run(self) -> None:
+        """Loads and displays the research run selected from the history dropdown."""
+        fpath = self.history_combo.currentData()
+        if not fpath or not os.path.exists(fpath):
+            return
+        try:
+            with open(fpath, "r", encoding="utf-8") as f:
+                run = ResearchRun.model_validate_json(f.read())
+            self.current_run = run
+            self.topic_input.setText(run.topic)
+            self.display_research_run(run)
+            self.lbl_status.setText(f"Loaded saved research for: {run.topic}")
+        except Exception as e:
+            QMessageBox.warning(self, "Load Error", f"Failed to load research run: {e}")
 
     def display_research_run(self, run: ResearchRun):
         # Display queries
@@ -246,7 +309,10 @@ class ResearchWidget(QWidget):
                 row = self.sources_table.rowCount()
                 self.sources_table.insertRow(row)
                 self.sources_table.setItem(row, 0, QTableWidgetItem(landscape.query))
-                self.sources_table.setItem(row, 1, QTableWidgetItem(res.title))
+                title_item = QTableWidgetItem(res.title)
+                title_item.setData(int(Qt.ItemDataRole.UserRole), res.url)
+                self.sources_table.setItem(row, 1, title_item)
+
                 self.sources_table.setItem(row, 2, QTableWidgetItem(res.snippet))
 
         # Display strategy
@@ -279,5 +345,7 @@ class ResearchWidget(QWidget):
         query = q_item.text() if q_item else ""
         title = t_item.text() if t_item else ""
         snippet = s_item.text() if s_item else ""
+        url = t_item.data(int(Qt.ItemDataRole.UserRole)) if t_item else ""
+        url_line = f"\nURL: {url}" if url else ""
 
-        self.source_detail.setPlainText(f"SOURCE: {title}\nSEARCH QUERY: {query}\n\nSNIPPET:\n{snippet}")
+        self.source_detail.setPlainText(f"SOURCE: {title}{url_line}\nSEARCH QUERY: {query}\n\nSNIPPET:\n{snippet}")

@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from app.core.constants import APP_NAME, APP_VERSION
+from app.core.config import get_active_provider_name
 from app.projects.service import ProjectService
 from app.projects.models import Project
 from app.ui.dashboard import DashboardWidget
@@ -139,6 +140,8 @@ class MainWindow(QMainWindow):
 
         # Connect internal navigation signals
         self.dashboard_view.navigate_to.connect(self.switch_tab)
+        self.dashboard_view.open_article_requested.connect(self.open_article_from_dashboard)
+        self.settings_view.settings_updated.connect(self.on_settings_updated)
 
         root_layout.addWidget(self.stack, 1)
 
@@ -209,9 +212,30 @@ class MainWindow(QMainWindow):
             return self.project_service.get_project(proj_id)
         return None
 
+    def open_article_from_dashboard(self, slug: str) -> None:
+        """Switches to Writing Studio and selects the requested article."""
+        self.switch_tab(2)
+        self.articles_view.refresh_articles()
+        self.articles_view.select_article_by_slug(slug)
+
+    def on_settings_updated(self) -> None:
+        """Reacts to provider or model changes in settings."""
+        self.update_top_model_label()
+        self.refresh_dashboard_state()
+
     def refresh_dashboard_state(self) -> None:
         """Syncs environment status and counts with the dashboard view."""
-        has_gemini = bool(os.getenv("GEMINI_API_KEY"))
+        p_name = get_active_provider_name()
+        has_key = False
+        if p_name == "gemini":
+            has_key = bool(os.getenv("GEMINI_API_KEY"))
+        elif p_name == "anthropic":
+            has_key = bool(os.getenv("ANTHROPIC_API_KEY"))
+        elif p_name == "openai":
+            has_key = bool(os.getenv("OPENAI_API_KEY"))
+        elif p_name == "cursor":
+            has_key = bool(os.getenv("CURSOR_API_KEY")) or True
+
         active_p = self.get_active_project()
         has_proj = active_p is not None
 
@@ -221,10 +245,15 @@ class MainWindow(QMainWindow):
         )
 
         self.dashboard_view.update_checklist(
-            has_gemini=has_gemini,
+            has_gemini=has_key,
             has_project=has_proj,
-            has_nextjs=has_nextjs
+            has_nextjs=has_nextjs,
+            provider_name=p_name
         )
+
+        # Build project lookup dictionary for friendly names
+        projects = self.project_service.list_projects()
+        project_lookup = {p.id: p.name for p in projects}
 
         # Count articles and drafts
         art_count = 0
@@ -244,13 +273,28 @@ class MainWindow(QMainWindow):
             research_count=res_count,
             drafts_count=draft_count
         )
-        self.dashboard_view.load_recent_articles()
+        self.dashboard_view.load_recent_articles(project_lookup)
 
     def update_top_model_label(self) -> None:
         """Updates model text in top navigation bar."""
-        model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-        thinking = os.getenv("GEMINI_THINKING_LEVEL", "medium")
-        self.lbl_top_model.setText(f"{model} ({thinking})")
+        p_name = get_active_provider_name()
+        if p_name == "gemini":
+            model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+            thinking = os.getenv("GEMINI_THINKING_LEVEL", "medium")
+            self.lbl_top_model.setText(f"{model} ({thinking})")
+            self.lbl_top_model.setToolTip(f"Active Provider: Google Gemini ({model})")
+        elif p_name == "anthropic":
+            model = os.getenv("ANTHROPIC_MODEL", "claude-3-7-sonnet-latest")
+            self.lbl_top_model.setText(f"{model}")
+            self.lbl_top_model.setToolTip(f"Active Provider: Anthropic Claude ({model})")
+        elif p_name == "openai":
+            model = os.getenv("OPENAI_MODEL", "gpt-4o")
+            self.lbl_top_model.setText(f"{model}")
+            self.lbl_top_model.setToolTip(f"Active Provider: OpenAI ChatGPT ({model})")
+        elif p_name == "cursor":
+            model = os.getenv("CURSOR_MODEL", "cursor-fast")
+            self.lbl_top_model.setText(f"{model}")
+            self.lbl_top_model.setToolTip(f"Active Provider: Cursor / Custom OpenAI ({model})")
 
     def launch_article_generator(self) -> None:
         """Opens the AI Article Production Studio dialog."""

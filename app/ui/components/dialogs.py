@@ -393,13 +393,19 @@ class ArticleGeneratorDialog(QDialog):
             )
             return
 
+        wc_str = self.word_count_combo.currentText().replace(",", "").replace("words", "").strip()
+        try:
+            wc_target = int(wc_str)
+        except ValueError:
+            wc_target = 1800
+
         # Prepare request
         req = GenerationRequest(
             project_id=self.active_project.id if self.active_project else "default",
             topic=topic,
             keywords=[k.strip() for k in self.keywords_input.text().split(",") if k.strip()],
             tone=self.tone_input.text().strip(),
-            word_count_target=1800
+            word_count_target=wc_target
         )
 
         self.btn_start.setEnabled(False)
@@ -425,15 +431,6 @@ class ArticleGeneratorDialog(QDialog):
             self.generated_article = article
             self.lbl_status.setText(f"✓ {msg}")
             self.lbl_status.setStyleSheet("color: #15803D; font-size: 12px; font-weight: 500;")
-
-            # Persist to drafts
-            os.makedirs("data/generation", exist_ok=True)
-            draft_path = os.path.join("data/generation", f"{article.slug}.json")
-            try:
-                with open(draft_path, "w", encoding="utf-8") as f:
-                    f.write(article.model_dump_json(indent=2))
-            except Exception:
-                pass
 
             QMessageBox.information(
                 self, "Production Succeeded",

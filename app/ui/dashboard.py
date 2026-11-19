@@ -12,9 +12,11 @@ from PySide6.QtCore import Signal, Qt
 class DashboardWidget(QWidget):
     """Calm editorial home screen displaying active work, document library, and shortcuts."""
     navigate_to = Signal(int)
+    open_article_requested = Signal(str)
 
     def __init__(self):
         super().__init__()
+        self._project_lookup = {}
         layout = QVBoxLayout(self)
         layout.setContentsMargins(36, 24, 36, 24)
         layout.setSpacing(18)
@@ -151,8 +153,8 @@ class DashboardWidget(QWidget):
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        self.doc_table.cellClicked.connect(lambda r, c: self.navigate_to.emit(2) if c == 4 else None)
-        self.doc_table.cellDoubleClicked.connect(lambda r, c: self.navigate_to.emit(2))
+        self.doc_table.cellClicked.connect(self._on_doc_cell_clicked)
+        self.doc_table.cellDoubleClicked.connect(lambda r, c: self._on_doc_cell_clicked(r, 4))
         layout.addWidget(self.doc_table, 1)
 
         # Empty State Message
@@ -197,13 +199,30 @@ class DashboardWidget(QWidget):
         if "Drafts" in self.stat_labels:
             self.stat_labels["Drafts"].setText(str(drafts_count))
 
-    def update_checklist(self, has_gemini: bool, has_project: bool, has_nextjs: bool) -> None:
-        """Updates the system readiness indicators."""
+    def _on_doc_cell_clicked(self, row: int, col: int) -> None:
+        """Handles table clicks, routing Open action with target article slug."""
+        if col in (0, 4):
+            item = self.doc_table.item(row, 0)
+            slug = item.data(int(Qt.ItemDataRole.UserRole)) if item else None
+            if slug:
+                self.open_article_requested.emit(slug)
+            else:
+                self.navigate_to.emit(2)
+
+    def update_checklist(
+        self,
+        has_gemini: bool,
+        has_project: bool,
+        has_nextjs: bool,
+        provider_name: str = "Gemini"
+    ) -> None:
+        """Updates the system readiness indicators with multi-provider awareness."""
+        display_prov = provider_name.capitalize()
         if has_gemini:
-            self.chk_gemini.setText("● Gemini API Configured")
+            self.chk_gemini.setText(f"● {display_prov} Configured")
             self.chk_gemini.setStyleSheet("color: #15803D; font-size: 12px; font-weight: 500;")
         else:
-            self.chk_gemini.setText("○ Gemini API Missing")
+            self.chk_gemini.setText(f"○ {display_prov} Missing")
             self.chk_gemini.setStyleSheet("color: #B91C1C; font-size: 12px;")
 
         if has_project:
@@ -223,8 +242,11 @@ class DashboardWidget(QWidget):
     def set_active_project_name(self, name: str) -> None:
         self.lbl_workspace_meta.setText(f"Active Workspace: {name} • Local Publishing Studio")
 
-    def load_recent_articles(self) -> None:
+    def load_recent_articles(self, project_lookup: dict | None = None) -> None:
         """Reads articles from local storage and populates the recent work table."""
+        if project_lookup is not None:
+            self._project_lookup = project_lookup
+
         articles_dir = "data/articles"
         self.doc_table.setRowCount(0)
 
@@ -249,14 +271,21 @@ class DashboardWidget(QWidget):
                     data = json.load(f)
 
                 title = data.get("title", filename)
+                slug = data.get("slug", filename[:-5] if filename.endswith(".json") else filename)
                 content = data.get("content", "")
                 word_count = len(content.split()) if content else 0
                 proj_id = data.get("project_id", "Default")
 
+                proj_display = self._project_lookup.get(
+                    proj_id, "Default Workspace" if proj_id in ("default", "Default", None) else proj_id
+                )
+
                 row = self.doc_table.rowCount()
                 self.doc_table.insertRow(row)
 
-                self.doc_table.setItem(row, 0, QTableWidgetItem(title))
+                title_item = QTableWidgetItem(title)
+                title_item.setData(int(Qt.ItemDataRole.UserRole), slug)
+                self.doc_table.setItem(row, 0, title_item)
 
                 # Status pill
                 status_str = "Draft" if word_count < 300 else "Completed"
@@ -265,7 +294,7 @@ class DashboardWidget(QWidget):
                 self.doc_table.setItem(row, 1, status_item)
 
                 self.doc_table.setItem(row, 2, QTableWidgetItem(f"{word_count:,} words"))
-                self.doc_table.setItem(row, 3, QTableWidgetItem(proj_id))
+                self.doc_table.setItem(row, 3, QTableWidgetItem(proj_display))
 
                 # Action column
                 act_item = QTableWidgetItem("Open →")

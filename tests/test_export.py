@@ -61,3 +61,49 @@ def test_filtered_project_context_none_topic():
     assert ctx.topic == ""
     prompt_str = ctx.format_for_prompt()
     assert "Brand:" in prompt_str
+
+
+def test_editor_sync_sections_and_export():
+    """Verify that editing manuscript content and re-syncing updates sections and exporters."""
+    from app.ui.articles import ArticlesWidget
+    article = Article(
+        title="Initial Title",
+        slug="sync-test",
+        content="# Initial Title\n\n## Old Section\nOld content",
+        sections=[ArticleSection(id="1", heading="Old Section", level=2, content="Old content")]
+    )
+
+    # Simulated user edit
+    updated_markdown = (
+        "# Revised Architecture Title\n\n"
+        "## Architecture Foundations\n"
+        "Updated high-throughput consensus explanation.\n\n"
+        "### Cluster Topology\n"
+        "Three-node RAFT replication.\n\n"
+        "## Performance Metrics\n"
+        "100k writes/sec benchmark."
+    )
+
+    # Use widget sync method without full Qt app
+    widget = ArticlesWidget.__new__(ArticlesWidget)
+    widget._sync_sections_from_content(article, updated_markdown)
+
+    assert article.title == "Revised Architecture Title"
+    assert len(article.sections) == 3
+    assert article.sections[0].heading == "Architecture Foundations"
+    assert "Updated high-throughput" in article.sections[0].content
+    assert article.sections[1].heading == "Cluster Topology"
+    assert article.sections[1].level == 3
+    assert article.sections[2].heading == "Performance Metrics"
+
+    # Verify exporters respect updated sections
+    md_output = export_markdown(article)
+    assert "# Revised Architecture Title" in md_output
+    assert "## Architecture Foundations" in md_output
+    assert "### Cluster Topology" in md_output
+    assert "## Performance Metrics" in md_output
+
+    html_output = export_html(article)
+    assert "<h1>Revised Architecture Title</h1>" in html_output
+    assert "<h2>Architecture Foundations</h2>" in html_output
+    assert "<h3>Cluster Topology</h3>" in html_output

@@ -121,6 +121,7 @@ class DiscoverModelsThread(QThread):
 
 class SettingsWidget(QWidget):
     """Multi-provider configuration studio supporting Gemini, Claude, ChatGPT, and Cursor."""
+    settings_updated = Signal()
 
     PROVIDER_CHOICES: List[Tuple[str, str]] = [
         ("gemini", "Google Gemini (Gemini 3.8 / 4 Series)"),
@@ -481,6 +482,7 @@ class SettingsWidget(QWidget):
         provider_id = self.get_selected_provider()
         save_config_value("AI_PROVIDER", provider_id)
         self.update_provider_ui(provider_id)
+        self.settings_updated.emit()
 
     def toggle_api_visibility(self):
         if self.api_input.echoMode() == QLineEdit.EchoMode.Password:
@@ -522,6 +524,7 @@ class SettingsWidget(QWidget):
 
         self.lbl_status.setText(f"✓ Settings for {provider_id.capitalize()} ({model}) saved successfully.")
         self.lbl_status.setStyleSheet("color: #15803D; font-size: 12px; font-weight: 500;")
+        self.settings_updated.emit()
 
     def save_api_key(self):
         """Backwards-compatible alias for saving provider credentials."""
@@ -548,6 +551,7 @@ class SettingsWidget(QWidget):
             save_config_value("OPENAI_MODEL", model_id)
         elif provider_id == "cursor":
             save_config_value("CURSOR_MODEL", model_id)
+        self.settings_updated.emit()
 
     def on_thinking_changed(self, text: str):
         save_config_value("GEMINI_THINKING_LEVEL", text)

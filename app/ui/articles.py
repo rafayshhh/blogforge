@@ -1,6 +1,7 @@
 """Editorial writing studio, markdown canvas, publication preview, and multi-format exporter."""
 
 import os
+import re
 import json
 from typing import Optional
 from PySide6.QtWidgets import (
@@ -123,6 +124,7 @@ class ArticlesWidget(QWidget):
 
         self.btn_view_write = QPushButton("Write")
         self.btn_view_write.setObjectName("ghostBtn")
+        self.btn_view_write.setCheckable(True)
         self.btn_view_write.setFixedHeight(30)
         self.btn_view_write.setToolTip("Distraction-free single writing canvas")
         self.btn_view_write.clicked.connect(lambda: self.set_view_mode("write"))
@@ -130,6 +132,7 @@ class ArticlesWidget(QWidget):
 
         self.btn_view_split = QPushButton("Split View")
         self.btn_view_split.setObjectName("ghostBtn")
+        self.btn_view_split.setCheckable(True)
         self.btn_view_split.setFixedHeight(30)
         self.btn_view_split.setToolTip("Side-by-side markdown editor and live preview")
         self.btn_view_split.clicked.connect(lambda: self.set_view_mode("split"))
@@ -137,6 +140,7 @@ class ArticlesWidget(QWidget):
 
         self.btn_view_preview = QPushButton("Preview")
         self.btn_view_preview.setObjectName("ghostBtn")
+        self.btn_view_preview.setCheckable(True)
         self.btn_view_preview.setFixedHeight(30)
         self.btn_view_preview.setToolTip("Full publication reading preview")
         self.btn_view_preview.clicked.connect(lambda: self.set_view_mode("preview"))
@@ -242,6 +246,8 @@ class ArticlesWidget(QWidget):
         self.html_preview = QTextEdit()
         self.html_preview.setPlaceholderText("Live typeset publication preview will render here...")
         self.html_preview.setReadOnly(True)
+        preview_css = get_preview_html_styles().replace("<style>", "").replace("</style>", "")
+        self.html_preview.document().setDefaultStyleSheet(preview_css)
         self.html_preview.setStyleSheet("""
             QTextEdit {
                 background-color: #FFFFFF;
@@ -266,9 +272,13 @@ class ArticlesWidget(QWidget):
         right_layout.addWidget(self.lbl_save_status)
 
         main_layout.addWidget(right_container, 1)
+        self.set_view_mode("split")
 
     def set_view_mode(self, mode: str):
         """Toggles between Split View, Write-Only, and Preview-Only."""
+        self.btn_view_split.setChecked(mode == "split")
+        self.btn_view_write.setChecked(mode == "write")
+        self.btn_view_preview.setChecked(mode == "preview")
         if mode == "split":
             self.md_editor.setVisible(True)
             self.html_preview.setVisible(True)
@@ -429,6 +439,51 @@ class ArticlesWidget(QWidget):
         )
         self.reading_time_label.setText(f"{words:,} words • ~{mins} min read")
 
+    def _sync_sections_from_content(self, article: Article, content: str) -> None:
+        """Parses markdown manuscript into structured sections to keep model in sync."""
+        lines = content.splitlines()
+        sections: list[ArticleSection] = []
+        current_heading = ""
+        current_level = 2
+        current_body: list[str] = []
+        sec_id = 1
+        extracted_title: Optional[str] = None
+
+        for line in lines:
+            m = re.match(r"^(#{1,6})\s+(.*)$", line)
+            if m:
+                hashes, heading_text = m.groups()
+                lvl = len(hashes)
+                if lvl == 1 and extracted_title is None:
+                    extracted_title = heading_text.strip()
+                    continue
+                if current_heading or "\n".join(current_body).strip():
+                    sections.append(ArticleSection(
+                        id=f"sec_{sec_id}",
+                        heading=current_heading or "Introduction",
+                        level=current_level,
+                        content="\n".join(current_body).strip()
+                    ))
+                    sec_id += 1
+                current_level = lvl
+                current_heading = heading_text.strip()
+                current_body = []
+            else:
+                current_body.append(line)
+
+        if current_heading or "\n".join(current_body).strip():
+            sections.append(ArticleSection(
+                id=f"sec_{sec_id}",
+                heading=current_heading or "Introduction",
+                level=current_level,
+                content="\n".join(current_body).strip()
+            ))
+
+        if extracted_title:
+            article.title = extracted_title
+        if sections:
+            article.sections = sections
+
     def save_article_changes(self):
         if not self.current_article or not self.current_file_path:
             QMessageBox.warning(self, "No Document", "No article selected to save.")
@@ -436,6 +491,7 @@ class ArticlesWidget(QWidget):
 
         new_content = self.md_editor.toPlainText()
         self.current_article.content = new_content
+        self._sync_sections_from_content(self.current_article, new_content)
 
         try:
             with open(self.current_file_path, "w", encoding="utf-8") as f:
