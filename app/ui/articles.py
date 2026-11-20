@@ -46,9 +46,10 @@ class ArticlesWidget(QWidget):
         # 1. Left Sidebar: Document Library & Drafts
         # ---------------------------------------------------------------------
         left_container = QWidget()
+        left_container.setObjectName("articlesLeftPanel")
         left_container.setFixedWidth(240)
         left_container.setStyleSheet("""
-            QWidget {
+            #articlesLeftPanel {
                 background-color: #F6F4EE;
                 border-right: 1px solid #E0DDD5;
             }
@@ -105,7 +106,8 @@ class ArticlesWidget(QWidget):
         # 2. Right Workspace: The Editorial Sanctuary
         # ---------------------------------------------------------------------
         right_container = QWidget()
-        right_container.setStyleSheet("background-color: #F9F8F6;")
+        right_container.setObjectName("articlesRightPanel")
+        right_container.setStyleSheet("#articlesRightPanel { background-color: #F9F8F6; }")
         right_layout = QVBoxLayout(right_container)
         right_layout.setContentsMargins(24, 14, 24, 14)
         right_layout.setSpacing(10)
@@ -166,7 +168,7 @@ class ArticlesWidget(QWidget):
         self.export_combo = QComboBox()
         self.export_combo.addItems(["Markdown", "HTML", "JSON"])
         self.export_combo.setFixedHeight(30)
-        self.export_combo.setFixedWidth(105)
+        self.export_combo.setFixedWidth(125)
         header_bar.addWidget(self.export_combo)
 
         btn_export = QPushButton("Export")
@@ -178,12 +180,16 @@ class ArticlesWidget(QWidget):
 
         # Formatting Toolbar Strip
         toolbar_strip = QFrame()
+        toolbar_strip.setObjectName("formattingToolbar")
         toolbar_strip.setStyleSheet("""
-            QFrame {
+            #formattingToolbar {
                 background-color: #FFFFFF;
                 border: 1px solid #E0DDD5;
                 border-radius: 5px;
-                padding: 2px 6px;
+            }
+            #formattingToolbar QLabel {
+                background-color: transparent;
+                border: none;
             }
         """)
         toolbar_layout = QHBoxLayout(toolbar_strip)
@@ -358,7 +364,7 @@ class ArticlesWidget(QWidget):
         for directory, is_draft in directories:
             if os.path.exists(directory):
                 for fname in sorted(os.listdir(directory)):
-                    if fname.endswith(".json"):
+                    if fname.endswith(".json") and not fname.endswith("_partial.json"):
                         full_path = os.path.join(directory, fname)
                         try:
                             with open(full_path, "r", encoding="utf-8") as f:

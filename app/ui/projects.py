@@ -276,15 +276,18 @@ class ProjectsWidget(QWidget):
         self.refresh_projects()
 
     def refresh_projects(self):
-        """Reloads project list from service."""
+        """Reloads project list from service, preserving active selection if present."""
         self.project_list.blockSignals(True)
         self.project_list.clear()
         projects = self.service.list_projects()
-        for p in projects:
+        target_row = 0
+        for idx, p in enumerate(projects):
             self.project_list.addItem(p.name)
+            if self.current_project_id and p.id == self.current_project_id:
+                target_row = idx
 
         if projects:
-            self.project_list.setCurrentRow(0)
+            self.project_list.setCurrentRow(target_row)
             self.project_list.blockSignals(False)
             self.load_project()
         else:

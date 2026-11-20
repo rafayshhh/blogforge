@@ -221,7 +221,7 @@ class ArticleGeneratorDialog(QDialog):
     def __init__(self, parent=None, active_project=None):
         super().__init__(parent)
         self.setWindowTitle("AI Article Production Studio")
-        self.setFixedSize(620, 540)
+        self.setFixedSize(660, 550)
         self.active_project = active_project
         self.worker: Optional[GeneratorWorkerThread] = None
         self.generated_article: Optional[Article] = None
@@ -245,19 +245,25 @@ class ArticleGeneratorDialog(QDialog):
 
         # Workflow Stage Indicator Bar
         stage_strip = QFrame()
+        stage_strip.setObjectName("stageStrip")
         stage_strip.setStyleSheet("""
-            QFrame {
+            #stageStrip {
                 background-color: #F4F1EA;
                 border: 1px solid #E0DDD5;
                 border-radius: 5px;
-                padding: 6px 12px;
+            }
+            #stageStrip QLabel {
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+                padding: 0px;
             }
         """)
         stage_layout = QHBoxLayout(stage_strip)
-        stage_layout.setContentsMargins(8, 4, 8, 4)
-        stage_layout.setSpacing(8)
+        stage_layout.setContentsMargins(12, 6, 12, 6)
+        stage_layout.setSpacing(10)
 
-        stages = ["1. Topic & Brief", "2. Outline", "3. Section Drafting", "4. Editorial Review"]
+        stages = ["1. Brief", "2. Outline", "3. Drafting", "4. Review"]
         for s in stages:
             lbl_s = QLabel(s)
             lbl_s.setStyleSheet("color: #57534E; font-size: 11px; font-weight: 600;")
@@ -270,11 +276,18 @@ class ArticleGeneratorDialog(QDialog):
 
         # Form Fields Card
         form_card = QFrame()
+        form_card.setObjectName("formCard")
         form_card.setStyleSheet("""
-            QFrame {
+            #formCard {
                 background-color: #FFFFFF;
                 border: 1px solid #E0DDD5;
                 border-radius: 6px;
+            }
+            #formCard QLabel {
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+                padding: 0px;
             }
         """)
         form_layout = QVBoxLayout(form_card)

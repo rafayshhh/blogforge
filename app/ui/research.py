@@ -161,7 +161,7 @@ class ResearchWidget(QWidget):
         self.source_detail.setFixedHeight(90)
         ts_layout.addWidget(self.source_detail, 1)
 
-        self.tabs.addTab(tab_sources, "Sources & Landscape")
+        self.tabs.addTab(tab_sources, "Sources && Landscape")
 
         # Tab 2: Content Strategy
         tab_strategy = QWidget()
@@ -178,7 +178,7 @@ class ResearchWidget(QWidget):
         self.strategy_view.setPlaceholderText("Editorial angles, audience insights, and content gaps will appear here.")
         strat_layout.addWidget(self.strategy_view)
 
-        self.tabs.addTab(tab_strategy, "Content Strategy & Angles")
+        self.tabs.addTab(tab_strategy, "Content Strategy && Angles")
 
         # Tab 3: Research Notes
         tab_notes = QWidget()

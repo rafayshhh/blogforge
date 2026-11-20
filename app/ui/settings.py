@@ -390,11 +390,18 @@ class SettingsWidget(QWidget):
 
     def _create_card(self, title: str, subtitle: str) -> QFrame:
         card = QFrame()
+        card.setObjectName("settingsCard")
         card.setStyleSheet("""
-            QFrame {
+            #settingsCard {
                 background-color: #FFFFFF;
                 border: 1px solid #E0DDD5;
                 border-radius: 6px;
+            }
+            #settingsCard QLabel {
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+                padding: 0px;
             }
         """)
         return card

@@ -75,12 +75,18 @@ class DashboardWidget(QWidget):
         # 2. Workspace Status & Summary Strip (Quiet, non-intrusive)
         # ---------------------------------------------------------------------
         status_strip = QFrame()
+        status_strip.setObjectName("statusStrip")
         status_strip.setStyleSheet("""
-            QFrame {
+            #statusStrip {
                 background-color: #F4F1EA;
                 border: 1px solid #E0DDD5;
                 border-radius: 6px;
-                padding: 6px 14px;
+            }
+            #statusStrip QLabel {
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+                padding: 0px;
             }
         """)
         strip_layout = QHBoxLayout(status_strip)
@@ -159,12 +165,19 @@ class DashboardWidget(QWidget):
 
         # Empty State Message
         self.empty_state_frame = QFrame()
+        self.empty_state_frame.setObjectName("emptyStateFrame")
         self.empty_state_frame.setStyleSheet("""
-            QFrame {
+            #emptyStateFrame {
                 background-color: #FFFFFF;
                 border: 1px dashed #D6D3D1;
                 border-radius: 6px;
                 padding: 32px;
+            }
+            #emptyStateFrame QLabel {
+                background-color: transparent;
+                border: none;
+                border-radius: 0px;
+                padding: 0px;
             }
         """)
         empty_layout = QVBoxLayout(self.empty_state_frame)
