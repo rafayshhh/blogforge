@@ -3,6 +3,7 @@
 import os
 import re
 import json
+import datetime
 from typing import Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QListWidget,
@@ -10,7 +11,7 @@ from PySide6.QtWidgets import (
     QComboBox, QLineEdit, QDialog, QFrame
 )
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QTextCursor
+from PySide6.QtGui import QFont, QTextCursor, QKeySequence, QShortcut
 
 from app.models.article import Article, ArticleSection
 from app.export.markdown import export_markdown
@@ -171,17 +172,17 @@ class ArticlesWidget(QWidget):
         self.export_combo.setFixedWidth(125)
         header_bar.addWidget(self.export_combo)
 
-        btn_export = QPushButton("Export")
-        btn_export.setFixedHeight(30)
-        btn_export.clicked.connect(self.export_selected)
-        header_bar.addWidget(btn_export)
+        self.btn_export = QPushButton("Export")
+        self.btn_export.setFixedHeight(30)
+        self.btn_export.clicked.connect(self.export_selected)
+        header_bar.addWidget(self.btn_export)
 
         right_layout.addLayout(header_bar)
 
         # Formatting Toolbar Strip
-        toolbar_strip = QFrame()
-        toolbar_strip.setObjectName("formattingToolbar")
-        toolbar_strip.setStyleSheet("""
+        self.toolbar_strip = QFrame()
+        self.toolbar_strip.setObjectName("formattingToolbar")
+        self.toolbar_strip.setStyleSheet("""
             #formattingToolbar {
                 background-color: #FFFFFF;
                 border: 1px solid #E0DDD5;
@@ -192,7 +193,7 @@ class ArticlesWidget(QWidget):
                 border: none;
             }
         """)
-        toolbar_layout = QHBoxLayout(toolbar_strip)
+        toolbar_layout = QHBoxLayout(self.toolbar_strip)
         toolbar_layout.setContentsMargins(6, 3, 6, 3)
         toolbar_layout.setSpacing(4)
 
@@ -223,7 +224,7 @@ class ArticlesWidget(QWidget):
         self.reading_time_label.setStyleSheet("color: #8C877F; font-size: 12px; font-weight: 500;")
         toolbar_layout.addWidget(self.reading_time_label)
 
-        right_layout.addWidget(toolbar_strip)
+        right_layout.addWidget(self.toolbar_strip)
 
         # Center Splitter: Markdown Writing Canvas + Publication Preview
         self.editor_splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -278,7 +279,24 @@ class ArticlesWidget(QWidget):
         right_layout.addWidget(self.lbl_save_status)
 
         main_layout.addWidget(right_container, 1)
+
+        # Keyboard shortcuts
+        QShortcut(QKeySequence("Ctrl+S"), self, self.save_article_changes)
+        QShortcut(QKeySequence("Ctrl+N"), self, self.create_blank_draft)
+
+        self._update_action_states()
         self.set_view_mode("split")
+
+    def _update_action_states(self):
+        """Enables or disables editor action buttons based on whether an article is open."""
+        has_article = self.current_article is not None
+        self.btn_save.setEnabled(has_article)
+        self.btn_export.setEnabled(has_article)
+        self.btn_del.setEnabled(has_article)
+        self.toolbar_strip.setEnabled(has_article)
+        self.md_editor.setReadOnly(not has_article)
+        if not has_article:
+            self.md_editor.setPlaceholderText("Select an article or click '+ Draft' above to begin writing...")
 
     def set_view_mode(self, mode: str):
         """Toggles between Split View, Write-Only, and Preview-Only."""
@@ -329,17 +347,34 @@ class ArticlesWidget(QWidget):
 
     def select_article_by_slug(self, slug: str):
         """Finds and selects the article item matching the specified slug."""
-        for idx, item in enumerate(self.all_items):
-            if item.get("slug") == slug:
+        if self.search_input.text():
+            self.search_input.clear()
+        for idx in range(self.article_list.count()):
+            item = self.article_list.item(idx)
+            path = item.data(int(Qt.ItemDataRole.UserRole))
+            for ai in self.all_items:
+                if ai.get("path") == path and ai.get("slug") == slug:
+                    self.article_list.setCurrentRow(idx)
+                    return
+
+    def select_article_by_path(self, target_path: str):
+        """Finds and selects the article item matching the specified file path."""
+        if self.search_input.text():
+            self.search_input.clear()
+        for idx in range(self.article_list.count()):
+            item = self.article_list.item(idx)
+            if item.data(int(Qt.ItemDataRole.UserRole)) == target_path:
                 self.article_list.setCurrentRow(idx)
-                break
+                return
 
     def create_blank_draft(self):
-        """Creates and persists an empty draft article."""
+        """Creates and persists an empty draft article associated with active project."""
         import time
         ts = int(time.time())
         blank_slug = f"draft-{ts}"
+        active_proj = self.main_window.get_active_project() if hasattr(self.main_window, "get_active_project") else None
         blank_article = Article(
+            project_id=active_proj.id if active_proj else None,
             title="Untitled Draft",
             slug=blank_slug,
             content="# Untitled Draft\n\nBegin writing here...",
@@ -350,7 +385,9 @@ class ArticlesWidget(QWidget):
             with open(target_path, "w", encoding="utf-8") as f:
                 f.write(blank_article.model_dump_json(indent=2))
             self.refresh_articles()
-            self.select_article_by_slug(blank_slug)
+            self.select_article_by_path(target_path)
+            if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):
+                self.main_window.refresh_dashboard_state()
         except Exception as e:
             QMessageBox.warning(self, "Draft Creation Error", f"Could not create draft: {e}")
 
@@ -406,6 +443,7 @@ class ArticlesWidget(QWidget):
             self.meta_label.setText("Select an article to view details.")
             self.reading_time_label.setText("0 words • ~0 min read")
             self.lbl_save_status.setText("Document Status: No active article")
+            self._update_action_states()
             return
 
         path = items[0].data(int(Qt.ItemDataRole.UserRole))
@@ -423,6 +461,7 @@ class ArticlesWidget(QWidget):
 
             self._update_metrics(md_text)
             self.lbl_save_status.setText(f"Document Status: Saved locally ({os.path.basename(path)})")
+            self._update_action_states()
         except Exception as e:
             QMessageBox.warning(self, "Load Error", f"Failed to load article: {e}")
 
@@ -502,10 +541,29 @@ class ArticlesWidget(QWidget):
         try:
             with open(self.current_file_path, "w", encoding="utf-8") as f:
                 f.write(self.current_article.model_dump_json(indent=2))
-            QMessageBox.information(self, "Saved", "Article changes saved successfully.")
+
+            # Sync title across all_items and article_list
+            new_title = self.current_article.title
+            is_draft = "draft" in self.current_file_path.lower()
+            for item in self.all_items:
+                if item.get("path") == self.current_file_path:
+                    prefix = "Draft: " if item.get("is_draft") else ""
+                    item["label"] = f"{prefix}{new_title}"
+                    break
+            for idx in range(self.article_list.count()):
+                li = self.article_list.item(idx)
+                if li.data(int(Qt.ItemDataRole.UserRole)) == self.current_file_path:
+                    prefix = "Draft: " if is_draft else ""
+                    li.setText(f"{prefix}{new_title}")
+                    break
+
+            self._update_metrics(new_content)
+            now_str = datetime.datetime.now().strftime("%H:%M:%S")
             self.lbl_save_status.setText(
-                f"Document Status: Saved locally ({os.path.basename(self.current_file_path)})"
+                f"✓ Saved locally at {now_str} ({os.path.basename(self.current_file_path)})"
             )
+            if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):
+                self.main_window.refresh_dashboard_state()
         except Exception as e:
             QMessageBox.warning(self, "Save Error", f"Failed to save article: {e}")
 
@@ -525,6 +583,9 @@ class ArticlesWidget(QWidget):
                 self.current_article = None
                 self.current_file_path = None
                 self.refresh_articles()
+                self._update_action_states()
+                if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):
+                    self.main_window.refresh_dashboard_state()
             except Exception as e:
                 QMessageBox.warning(self, "Delete Error", f"Could not delete: {e}")
 

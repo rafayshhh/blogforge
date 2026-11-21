@@ -47,26 +47,9 @@ class TestConnectionThread(QThread):
 
             p_lower = self.provider_name.lower().strip()
             if p_lower in ("gemini", "google"):
-                from app.providers.gemini import GeminiProvider
-                provider = GeminiProvider(api_key=self.api_key, default_model=self.model)
-                response = provider.generate("Reply with exactly: OK")
-                if not response or not response.text:
-                    self.result.emit(False, f"Connection failed with model '{self.model}': empty response.")
-                    return
-                extra_info = ""
-                try:
-                    available = (
-                        provider.list_available_models(self.api_key)
-                        if hasattr(provider, "list_available_models") else []
-                    )
-                    if self.model in available:
-                        extra_info = f" (Verified accessible; {len(available)} account models)"
-                    else:
-                        extra_info = f" (Model '{self.model}' active; {len(available)} account models)"
-                except Exception:
-                    pass
-                self.result.emit(True, f"Connected successfully. Model: {self.model}{extra_info}")
-                return
+                success, msg, _ = GeminiProvider.diagnose_connection(
+                    api_key=self.api_key, model=self.model
+                )
             elif p_lower in ("anthropic", "claude"):
                 success, msg, _ = AnthropicProvider.diagnose_connection(
                     api_key=self.api_key, model=self.model, base_url=self.base_url

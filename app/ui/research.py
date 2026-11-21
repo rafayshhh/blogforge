@@ -123,6 +123,25 @@ class ResearchWidget(QWidget):
         self.history_combo.currentIndexChanged.connect(self.load_selected_history_run)
         left_layout.addWidget(self.history_combo)
 
+        history_btn_layout = QHBoxLayout()
+        self.btn_del_run = QPushButton("Delete Run")
+        self.btn_del_run.setObjectName("dangerBtn")
+        self.btn_del_run.setFixedHeight(28)
+        self.btn_del_run.clicked.connect(self.delete_selected_history_run)
+        history_btn_layout.addWidget(self.btn_del_run)
+        left_layout.addLayout(history_btn_layout)
+
+        left_layout.addSpacing(10)
+
+        # Bridge: Draft with AI Studio
+        self.btn_draft_studio = QPushButton("Draft with AI Studio →")
+        self.btn_draft_studio.setObjectName("primaryBtn")
+        self.btn_draft_studio.setFixedHeight(34)
+        self.btn_draft_studio.setCursor(Qt.PointingHandCursor)
+        self.btn_draft_studio.setToolTip("Open AI Article Production Studio pre-filled with this research.")
+        self.btn_draft_studio.clicked.connect(self.draft_article_from_research)
+        left_layout.addWidget(self.btn_draft_studio)
+
         left_layout.addStretch()
         layout.addWidget(left_panel)
 
@@ -349,3 +368,64 @@ class ResearchWidget(QWidget):
         url_line = f"\nURL: {url}" if url else ""
 
         self.source_detail.setPlainText(f"SOURCE: {title}{url_line}\nSEARCH QUERY: {query}\n\nSNIPPET:\n{snippet}")
+
+    def delete_selected_history_run(self):
+        """Permanently deletes the currently selected research run from disk."""
+        fpath = self.history_combo.currentData()
+        if not fpath or not os.path.exists(fpath):
+            QMessageBox.warning(self, "No Run Selected", "Please select a research run to delete.")
+            return
+
+        ans = QMessageBox.question(
+            self, "Confirm Delete",
+            "Are you sure you want to delete this research run?",
+            QMessageBox.Yes | QMessageBox.No
+        )
+        if ans == QMessageBox.Yes:
+            try:
+                os.remove(fpath)
+                self.current_run = None
+                self.queries_list.clear()
+                self.sources_table.setRowCount(0)
+                self.source_detail.clear()
+                self.strategy_view.clear()
+                self.notes_editor.clear()
+                self.lbl_status.setText("Research run deleted.")
+                self.refresh_previous_runs()
+                if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):
+                    self.main_window.refresh_dashboard_state()
+            except Exception as e:
+                QMessageBox.warning(self, "Delete Error", f"Failed to delete research run: {e}")
+
+    def draft_article_from_research(self):
+        """Launches AI Article Production Studio pre-filled with this research's topic and sources."""
+        topic = self.topic_input.text().strip()
+        if not topic and self.current_run:
+            topic = self.current_run.topic
+
+        if not topic:
+            QMessageBox.warning(
+                self, "Topic Required",
+                "Please run or select a research topic before launching the drafting studio."
+            )
+            return
+
+        sources = []
+        if self.current_run:
+            for landscape in self.current_run.search_landscape:
+                for r in landscape.results:
+                    if r.title:
+                        sources.append(r.title)
+
+        strategy_summary = None
+        if self.current_run and self.current_run.strategy:
+            strategy_summary = self.current_run.strategy.recommended_angle
+
+        if self.main_window and hasattr(self.main_window, "launch_article_generator_with_context"):
+            self.main_window.launch_article_generator_with_context(
+                topic=topic,
+                sources=sources,
+                strategy=strategy_summary
+            )
+        elif self.main_window and hasattr(self.main_window, "launch_article_generator"):
+            self.main_window.launch_article_generator()

@@ -213,12 +213,12 @@ class DashboardWidget(QWidget):
             self.stat_labels["Drafts"].setText(str(drafts_count))
 
     def _on_doc_cell_clicked(self, row: int, col: int) -> None:
-        """Handles table clicks, routing Open action with target article slug."""
+        """Handles table clicks, routing Open action with target article filepath or slug."""
         if col in (0, 4):
             item = self.doc_table.item(row, 0)
-            slug = item.data(int(Qt.ItemDataRole.UserRole)) if item else None
-            if slug:
-                self.open_article_requested.emit(slug)
+            target = item.data(int(Qt.ItemDataRole.UserRole)) if item else None
+            if target:
+                self.open_article_requested.emit(str(target))
             else:
                 self.navigate_to.emit(2)
 
@@ -256,20 +256,30 @@ class DashboardWidget(QWidget):
         self.lbl_workspace_meta.setText(f"Active Workspace: {name} • Local Publishing Studio")
 
     def load_recent_articles(self, project_lookup: dict | None = None) -> None:
-        """Reads articles from local storage and populates the recent work table."""
+        """Reads articles and drafts from local storage and populates the recent work table chronologically."""
         if project_lookup is not None:
             self._project_lookup = project_lookup
 
-        articles_dir = "data/articles"
         self.doc_table.setRowCount(0)
 
-        if not os.path.exists(articles_dir):
-            self.doc_table.hide()
-            self.empty_state_frame.show()
-            return
+        # Collect items from both published articles and drafts
+        collected_entries = []
+        directories = [("data/articles", False), ("data/generation", True)]
 
-        json_files = [f for f in os.listdir(articles_dir) if f.endswith(".json")]
-        if not json_files:
+        for directory, is_draft in directories:
+            if os.path.exists(directory):
+                for filename in os.listdir(directory):
+                    if filename.endswith(".json") and not filename.endswith("_partial.json"):
+                        filepath = os.path.join(directory, filename)
+                        try:
+                            mtime = os.path.getmtime(filepath)
+                            with open(filepath, "r", encoding="utf-8") as f:
+                                data = json.load(f)
+                            collected_entries.append((mtime, filepath, is_draft, data))
+                        except Exception:
+                            continue
+
+        if not collected_entries:
             self.doc_table.hide()
             self.empty_state_frame.show()
             return
@@ -277,31 +287,37 @@ class DashboardWidget(QWidget):
         self.doc_table.show()
         self.empty_state_frame.hide()
 
-        for filename in sorted(json_files, reverse=True)[:15]:
-            filepath = os.path.join(articles_dir, filename)
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    data = json.load(f)
+        # Sort chronologically by latest modification
+        collected_entries.sort(key=lambda x: x[0], reverse=True)
 
-                title = data.get("title", filename)
-                slug = data.get("slug", filename[:-5] if filename.endswith(".json") else filename)
+        for _, filepath, is_draft, data in collected_entries[:15]:
+            try:
+                title = data.get("title") or os.path.basename(filepath)
                 content = data.get("content", "")
                 word_count = len(content.split()) if content else 0
-                proj_id = data.get("project_id", "Default")
+                proj_id = data.get("project_id")
 
-                proj_display = self._project_lookup.get(
-                    proj_id, "Default Workspace" if proj_id in ("default", "Default", None) else proj_id
-                )
+                # Resolve project friendly name without leaking raw UUIDs
+                if not proj_id or proj_id in ("default", "Default"):
+                    proj_display = "Default Workspace"
+                elif proj_id in self._project_lookup:
+                    proj_display = self._project_lookup[proj_id]
+                else:
+                    proj_display = "Unassigned"
 
                 row = self.doc_table.rowCount()
                 self.doc_table.insertRow(row)
 
                 title_item = QTableWidgetItem(title)
-                title_item.setData(int(Qt.ItemDataRole.UserRole), slug)
+                # Store filepath in user role so opening by exact file is guaranteed
+                title_item.setData(int(Qt.ItemDataRole.UserRole), filepath)
                 self.doc_table.setItem(row, 0, title_item)
 
                 # Status pill
-                status_str = "Draft" if word_count < 300 else "Completed"
+                if is_draft:
+                    status_str = "Draft"
+                else:
+                    status_str = "Draft" if word_count < 300 else "Completed"
                 status_item = QTableWidgetItem(status_str)
                 status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
                 self.doc_table.setItem(row, 1, status_item)

@@ -180,27 +180,48 @@ class MainWindow(QMainWindow):
             self.articles_view.refresh_articles()
 
     def refresh_project_switcher(self) -> None:
-        """Reloads projects from disk into top switcher."""
+        """Reloads projects from disk into top switcher, preserving active selection if present."""
+        current_id = self.project_switcher.currentData()
         self.project_switcher.blockSignals(True)
         self.project_switcher.clear()
         projects = self.project_service.list_projects()
 
-        for p in projects:
+        target_idx = 0
+        for idx, p in enumerate(projects):
             self.project_switcher.addItem(p.name, p.id)
+            if current_id and p.id == current_id:
+                target_idx = idx
 
         if not projects:
             self.project_switcher.addItem("No Projects", None)
+        else:
+            self.project_switcher.setCurrentIndex(target_idx)
 
         self.project_switcher.blockSignals(False)
         self.on_project_switched()
 
-    def on_project_switched(self) -> None:
+    def select_project(self, project_id: Optional[str]) -> None:
+        """Selects a project by ID in the top switcher without re-entrant signals."""
+        if not project_id:
+            return
+        for i in range(self.project_switcher.count()):
+            if self.project_switcher.itemData(i) == project_id:
+                if self.project_switcher.currentIndex() != i:
+                    self.project_switcher.blockSignals(True)
+                    self.project_switcher.setCurrentIndex(i)
+                    self.project_switcher.blockSignals(False)
+                    self.on_project_switched(notify_projects_view=False)
+                break
+
+    def on_project_switched(self, notify_projects_view: bool = True) -> None:
         """Handles project dropdown selection changes."""
         proj_id = self.project_switcher.currentData()
         proj_name = self.project_switcher.currentText()
         if proj_id:
             self.dashboard_view.set_active_project_name(proj_name)
             self.status_msg.setText(f"Active Project: {proj_name}")
+            if notify_projects_view and hasattr(self, "projects_view"):
+                self.projects_view.set_active_project_id(proj_id)
         else:
             self.dashboard_view.set_active_project_name("None")
             self.status_msg.setText("No Active Project (Create one in Projects)")
@@ -212,11 +233,14 @@ class MainWindow(QMainWindow):
             return self.project_service.get_project(proj_id)
         return None
 
-    def open_article_from_dashboard(self, slug: str) -> None:
-        """Switches to Writing Studio and selects the requested article."""
+    def open_article_from_dashboard(self, slug_or_path: str) -> None:
+        """Switches to Writing Studio and selects the requested article by path or slug."""
         self.switch_tab(2)
         self.articles_view.refresh_articles()
-        self.articles_view.select_article_by_slug(slug)
+        if os.path.exists(slug_or_path):
+            self.articles_view.select_article_by_path(slug_or_path)
+        else:
+            self.articles_view.select_article_by_slug(slug_or_path)
 
     def on_settings_updated(self) -> None:
         """Reacts to provider or model changes in settings."""
@@ -262,7 +286,10 @@ class MainWindow(QMainWindow):
 
         draft_count = 0
         if os.path.exists("data/generation"):
-            draft_count = len([f for f in os.listdir("data/generation") if f.endswith(".json")])
+            draft_count = len([
+                f for f in os.listdir("data/generation")
+                if f.endswith(".json") and not f.endswith("_partial.json")
+            ])
 
         res_count = 0
         if os.path.exists("data/research"):
@@ -300,6 +327,30 @@ class MainWindow(QMainWindow):
         """Opens the AI Article Production Studio dialog."""
         active_proj = self.get_active_project()
         dlg = ArticleGeneratorDialog(self, active_project=active_proj)
+        if dlg.exec() == QDialog.DialogCode.Accepted:
+            article = dlg.get_article()
+            if article:
+                self.switch_tab(2)
+                self.articles_view.refresh_articles()
+                self.articles_view.select_article_by_slug(article.slug)
+
+    def launch_article_generator_with_context(
+        self,
+        topic: str,
+        sources: Optional[list[str]] = None,
+        strategy: Optional[str] = None
+    ) -> None:
+        """Opens the AI Article Production Studio pre-filled with research findings."""
+        active_proj = self.get_active_project()
+        dlg = ArticleGeneratorDialog(self, active_project=active_proj)
+        if hasattr(dlg, "topic_input") and topic:
+            dlg.topic_input.setText(topic)
+        if hasattr(dlg, "keywords_input") and sources:
+            # Extract keywords or domain hints from sources
+            existing = dlg.keywords_input.text().strip()
+            sources_hint = ", ".join([s[:40] for s in sources[:3] if s])
+            if not existing and sources_hint:
+                dlg.keywords_input.setText(sources_hint)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             article = dlg.get_article()
             if article:

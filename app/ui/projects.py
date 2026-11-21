@@ -9,7 +9,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from app.projects.service import ProjectService
-from app.projects.models import Product, InternalLink
+from app.projects.models import Project, Product, InternalLink
 from app.integrations.nextjs.exporter import NextJSExporter
 
 
@@ -329,6 +329,22 @@ class ProjectsWidget(QWidget):
                 self.nextjs_content_dir.clear()
                 self.nextjs_images_dir.clear()
 
+            if self.main_window and hasattr(self.main_window, "select_project"):
+                self.main_window.select_project(p.id)
+
+    def set_active_project_id(self, project_id: str):
+        """Selects a project by ID when switched from the main window header."""
+        if self.current_project_id == project_id:
+            return
+        projects = self.service.list_projects()
+        for idx, p in enumerate(projects):
+            if p.id == project_id:
+                self.project_list.blockSignals(True)
+                self.project_list.setCurrentRow(idx)
+                self.project_list.blockSignals(False)
+                self.load_project()
+                break
+
     def new_project(self):
         """Resets the form to create a new project."""
         self.current_project_id = None
@@ -403,6 +419,15 @@ class ProjectsWidget(QWidget):
             if self.main_window and hasattr(self.main_window, "refresh_project_switcher"):
                 self.main_window.refresh_project_switcher()
 
+    def _refresh_sublists(self, proj: Project):
+        """Refreshes product and URL list widgets without re-loading form text inputs."""
+        self.prod_list.clear()
+        for prod in proj.products:
+            self.prod_list.addItem(f"{prod.name} — {prod.description or ''}")
+        self.url_list.clear()
+        for url in proj.internal_links:
+            self.url_list.addItem(f"{url.title} ({url.url})")
+
     def add_product(self):
         """Adds a product via prompt or dialog."""
         if not self.current_project_id:
@@ -421,7 +446,7 @@ class ProjectsWidget(QWidget):
             return
         proj.products.append(Product(name=name, description=desc))
         self.service.update_project(proj)
-        self.load_project()
+        self._refresh_sublists(proj)
 
     def del_product(self):
         if not self.current_project_id:
@@ -434,7 +459,7 @@ class ProjectsWidget(QWidget):
             return
         proj.products.pop(row)
         self.service.update_project(proj)
-        self.load_project()
+        self._refresh_sublists(proj)
 
     def add_url(self):
         """Adds an internal URL via prompt or dialog."""
@@ -456,7 +481,7 @@ class ProjectsWidget(QWidget):
                 return
             proj.internal_links.append(link)
             self.service.update_project(proj)
-            self.load_project()
+            self._refresh_sublists(proj)
         except Exception as e:
             QMessageBox.warning(self, "Invalid URL", f"Please enter a valid URL: {e}")
 
@@ -471,7 +496,7 @@ class ProjectsWidget(QWidget):
             return
         proj.internal_links.pop(row)
         self.service.update_project(proj)
-        self.load_project()
+        self._refresh_sublists(proj)
 
     def browse_directory(self, target_line_edit: QLineEdit):
         folder = QFileDialog.getExistingDirectory(self, "Select Directory")
@@ -479,6 +504,11 @@ class ProjectsWidget(QWidget):
             target_line_edit.setText(folder)
 
     def test_nextjs(self):
+        target_dir = self.nextjs_content_dir.text().strip()
+        if not target_dir:
+            QMessageBox.warning(self, "Directory Required", "Please specify a Next.js content directory first.")
+            return
+
         if not self.current_project_id:
             QMessageBox.warning(self, "Save First", "Please save the project first.")
             return
@@ -488,6 +518,8 @@ class ProjectsWidget(QWidget):
             QMessageBox.warning(self, "Error", "Project not found.")
             return
 
+        # Ensure exporter tests current entered directory
+        proj.nextjs_integration.content_directory = target_dir
         exporter = NextJSExporter()
         try:
             exporter.test_connection(proj)
