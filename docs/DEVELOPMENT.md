@@ -7,11 +7,8 @@ This guide details how to set up, build, test, and contribute to BlogForge on yo
 ## 1. Prerequisites
 
 - **Python:** 3.11, 3.12, or 3.13 (recommended: Python 3.12).
-- **AI Credentials (at least one):**
+- **AI Credentials:**
   - Google Gemini API Key: [Google AI Studio](https://aistudio.google.com/)
-  - Anthropic Claude API Key: [Anthropic Console](https://console.anthropic.com/)
-  - OpenAI ChatGPT API Key: [OpenAI Platform](https://platform.openai.com/)
-  - Local endpoint: Ollama, OpenRouter, vLLM, LM Studio, or Cursor proxy.
 - **Git:** Version control.
 
 ---

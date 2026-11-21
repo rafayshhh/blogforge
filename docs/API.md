@@ -12,10 +12,7 @@ BlogForge provides a centralized factory to create and resolve AI providers dyna
 from app.providers.factory import create_provider, resolve_active_provider
 
 # Option A: Explicit instantiation
-provider = create_provider("anthropic", api_key="sk-ant-...", model="claude-3-5-sonnet-20241022")
-# or: provider = create_provider("openai", api_key="sk-...", model="gpt-4o")
-# or: provider = create_provider("gemini", api_key="AIzaSy...", model="gemini-3.8-flash")
-# or: provider = create_provider("cursor", base_url="http://localhost:11434/v1", model="llama3.3")
+provider = create_provider("gemini", api_key="AIzaSy...", model="gemini-3.8-flash")
 
 # Option B: Automatic resolution based on environment configuration
 active_provider = resolve_active_provider()

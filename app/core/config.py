@@ -1,4 +1,4 @@
-"""Configuration loader, persistence helper, and environment validator for BlogForge."""
+"""Configuration loader, persistence helper, and environment validator for BlogForge (Google Gemini)."""
 
 import os
 import logging
@@ -7,7 +7,7 @@ from dotenv import load_dotenv, find_dotenv
 
 logger = logging.getLogger(__name__)
 
-SUPPORTED_PROVIDERS: Tuple[str, ...] = ("gemini", "anthropic", "openai", "cursor")
+SUPPORTED_PROVIDERS: Tuple[str, ...] = ("gemini",)
 DEFAULT_PROVIDER = "gemini"
 
 VALID_THINKING_LEVELS = ("low", "medium", "high")
@@ -15,9 +15,6 @@ DEFAULT_THINKING_LEVEL = "medium"
 
 PROVIDER_DEFAULT_MODELS: Dict[str, str] = {
     "gemini": "gemini-3.8-flash",
-    "anthropic": "claude-3-5-sonnet-20241022",
-    "openai": "gpt-4o",
-    "cursor": "cursor-small",
 }
 DEFAULT_MODEL = PROVIDER_DEFAULT_MODELS["gemini"]
 
@@ -65,30 +62,12 @@ def save_config_value(key: str, value: str, env_path: str = ".env") -> None:
 
 
 def get_active_provider_name() -> str:
-    """Returns the active AI provider name ('gemini', 'anthropic', 'openai', 'cursor')."""
-    raw_provider = os.getenv("AI_PROVIDER", DEFAULT_PROVIDER).lower().strip()
-    if raw_provider in SUPPORTED_PROVIDERS:
-        return raw_provider
-    if raw_provider == "claude":
-        return "anthropic"
-    if raw_provider == "chatgpt":
-        return "openai"
-    if raw_provider in ("custom", "custom_openai", "openrouter"):
-        return "cursor"
+    """Returns the active AI provider name (always 'gemini')."""
     return DEFAULT_PROVIDER
 
 
 def get_active_model(provider: Optional[str] = None) -> str:
-    """Retrieves active model for specified provider or active system provider."""
-    p_name = provider or get_active_provider_name()
-    if p_name == "gemini":
-        return os.getenv("GEMINI_MODEL", PROVIDER_DEFAULT_MODELS["gemini"]).strip()
-    elif p_name == "anthropic":
-        return os.getenv("ANTHROPIC_MODEL", PROVIDER_DEFAULT_MODELS["anthropic"]).strip()
-    elif p_name == "openai":
-        return os.getenv("OPENAI_MODEL", PROVIDER_DEFAULT_MODELS["openai"]).strip()
-    elif p_name == "cursor":
-        return os.getenv("CURSOR_MODEL", PROVIDER_DEFAULT_MODELS["cursor"]).strip()
+    """Retrieves active Gemini model identifier."""
     return os.getenv("GEMINI_MODEL", DEFAULT_MODEL).strip()
 
 
@@ -115,4 +94,4 @@ def get_thinking_level() -> str:
 
 def get_model() -> str:
     """Retrieves GEMINI_MODEL with default fallback to gemini-3.8-flash."""
-    return get_active_model("gemini")
+    return get_active_model()

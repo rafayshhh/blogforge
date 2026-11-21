@@ -15,7 +15,6 @@ from app.research.engine import ResearchEngine
 from app.research.providers.mock import MockSearchProvider
 from app.research.models import ResearchRun
 from app.providers.factory import resolve_active_provider
-from app.core.config import get_active_provider_name
 
 
 class ResearchWorkerThread(QThread):
@@ -30,14 +29,13 @@ class ResearchWorkerThread(QThread):
 
     def run(self):
         try:
-            p_name = get_active_provider_name()
             key_param = self.api_key if self.api_key else None
-            ai_prov = resolve_active_provider(provider_name=p_name, api_key=key_param)
+            ai_prov = resolve_active_provider(api_key=key_param)
             search_prov = MockSearchProvider()
             engine = ResearchEngine(ai_provider=ai_prov, search_provider=search_prov)
 
             run_result = engine.run_research(topic=self.topic, depth=self.depth)
-            msg = f"Research completed successfully with {p_name.capitalize()}."
+            msg = "Research completed successfully with Google Gemini."
             self.finished_research.emit(True, run_result, msg)
         except Exception as e:
             self.finished_research.emit(False, None, f"Research error: {str(e)}")
@@ -226,21 +224,11 @@ class ResearchWidget(QWidget):
             QMessageBox.warning(self, "Topic Required", "Please enter a topic or keyword brief to research.")
             return
 
-        p_name = get_active_provider_name()
-        api_key = None
-        if p_name == "gemini":
-            api_key = os.getenv("GEMINI_API_KEY", "")
-        elif p_name == "anthropic":
-            api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        elif p_name == "openai":
-            api_key = os.getenv("OPENAI_API_KEY", "")
-        elif p_name == "cursor":
-            api_key = os.getenv("CURSOR_API_KEY", "") or "sk-local-proxy-key"
-
-        if not api_key and p_name != "cursor":
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
             QMessageBox.warning(
                 self, "Missing API Credentials",
-                f"{p_name.capitalize()} credentials not found. Please configure them in Settings."
+                "Google Gemini API key not found. Please configure it in Settings first."
             )
             return
 

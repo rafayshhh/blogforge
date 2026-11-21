@@ -544,7 +544,6 @@ class ArticlesWidget(QWidget):
 
             # Sync title across all_items and article_list
             new_title = self.current_article.title
-            is_draft = "draft" in self.current_file_path.lower()
             for item in self.all_items:
                 if item.get("path") == self.current_file_path:
                     prefix = "Draft: " if item.get("is_draft") else ""
@@ -553,7 +552,13 @@ class ArticlesWidget(QWidget):
             for idx in range(self.article_list.count()):
                 li = self.article_list.item(idx)
                 if li.data(int(Qt.ItemDataRole.UserRole)) == self.current_file_path:
-                    prefix = "Draft: " if is_draft else ""
+                    # Look up is_draft from all_items for the accurate prefix
+                    item_is_draft = next(
+                        (i.get("is_draft", False) for i in self.all_items
+                         if i.get("path") == self.current_file_path),
+                        False
+                    )
+                    prefix = "Draft: " if item_is_draft else ""
                     li.setText(f"{prefix}{new_title}")
                     break
 

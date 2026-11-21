@@ -1,12 +1,12 @@
 # BlogForge ⚡
 
 <p align="center">
-  <strong>A local-first, privacy-focused desktop studio for multi-provider AI content research, anti-slop editorial drafting, and multi-format publishing.</strong>
+  <strong>A local-first, privacy-focused desktop studio for Google Gemini AI content research, anti-slop editorial drafting, and multi-format publishing.</strong>
 </p>
 
 <p align="center">
   <a href="#key-features">Features</a> •
-  <a href="#multi-provider-ai-studio">Multi-Provider AI</a> •
+  <a href="#google-gemini-ai-studio">Google Gemini AI</a> •
   <a href="#anti-ai-slop-editorial-standards">Anti-Slop Engine</a> •
   <a href="#quick-start">Quick Start</a> •
   <a href="#architecture">Architecture</a> •
@@ -20,7 +20,7 @@
 
 **BlogForge** is a modern desktop workspace engineered for technical writers, content creators, journalists, and developer marketers. It bridges the gap between chaotic raw AI chats and production-ready editorial publishing.
 
-Instead of generic, robotic AI text stuffed with hallucinations and buzzwords, BlogForge enforces strict **Brand Voice Profiles**, leverages a **Topic-Aware Context Engine**, and executes an **Iterative Multi-Stage Generation Pipeline** (Outline → Section-by-Section Writing → Critical Review → FAQ Synthesis) across your choice of premier foundation models: **Google Gemini**, **Anthropic Claude**, **OpenAI ChatGPT**, or **Cursor / Local OpenAI-compatible endpoints**.
+Instead of generic, robotic AI text stuffed with hallucinations and buzzwords, BlogForge enforces strict **Brand Voice Profiles**, leverages a **Topic-Aware Context Engine**, and executes an **Iterative Multi-Stage Generation Pipeline** (Outline → Section-by-Section Writing → Critical Review → FAQ Synthesis) powered exclusively by **Google Gemini** models using the official `google-genai` SDK: **Gemini 3.8 Flash**, **Gemini 3.5 Flash-Lite**, and the next-generation **Gemini 4 series** (`gemini-4-hydrogen`, `gemini-4-argon`, `gemini-4-carbon`).
 
 Best of all, BlogForge is **local-first**: all your projects, brand guidelines, articles, research reports, and drafts remain strictly on your workstation.
 
@@ -38,6 +38,7 @@ Content generation tools often fail developers and technical founders in three k
 - Intelligent tokenized keyword matching that injects only relevant products and links for each specific topic.
 - A section-by-section writing pipeline with system-level defenses against prompt injection and fake testimonials.
 - A built-in **Anti-AI Slop Editorial Engine** that enforces human prose rhythm, bans 35+ machine clichés, and demands concrete technical evidence.
+- Native integration with **Google Gemini** taking full advantage of low-latency generation, configurable thinking budgets, and strict Pydantic JSON schemas.
 
 ---
 
@@ -46,7 +47,7 @@ Content generation tools often fail developers and technical founders in three k
 - 🖥️ **Editorial Paper Desktop Experience (PySide6 / Qt):** Crafted with a warm editorial paper palette, elegant serif typography, crisp document canvas, and responsive split-pane manuscript editing.
 - 🏢 **Multi-Brand & Project Governance:** Manage multiple websites or SaaS products with distinct brand tones, writing styles, preferred vocabulary, and rules.
 - 🎯 **Topic-Aware Context Filtering:** Dynamically matches products and internal URLs relevant to the topic, eliminating keyword stuffing and context bloat.
-- 🤖 **Multi-Provider AI Studio:** Seamlessly switch between Google Gemini, Anthropic Claude, OpenAI ChatGPT, and Cursor / Local OpenAI endpoints directly from the interface.
+- ⚡ **Google Gemini AI Studio:** Built from the ground up on the modern Google GenAI SDK (`google-genai`), supporting Gemini 3.8 Flash, 3.5 Flash-Lite, and the Gemini 4 family with real-time model discovery and thinking budget control (`low`, `medium`, `high`).
 - 🛡️ **Anti-AI Slop Standards:** Strict prohibition against machine clichés ("delve into", "rich tapestry", "game-changer", "fast-paced world"), banned rhetorical question hooks, and enforced syntactic variety.
 - 📝 **Iterative Generation Pipeline:** Generates structured outlines first, writes each section independently with real-time UI progress updates, and saves intermediate drafts automatically.
 - 🔍 **Autonomous Research Engine:** Generates strategic search queries, analyzes competitive search landscapes, and discovers untapped content gaps.
@@ -56,18 +57,26 @@ Content generation tools often fail developers and technical founders in three k
 
 ---
 
-## 4. Multi-Provider AI Studio
+## 4. Google Gemini AI Studio
 
-BlogForge supports all leading AI reasoning engines through a unified, decoupled provider architecture:
+BlogForge leverages Google's premier generative AI models through an optimized, typed provider architecture:
 
-| Provider | Supported Models | Primary Characteristics |
+| Model | Context & Speed | Ideal Use Case |
 | :--- | :--- | :--- |
-| **Google Gemini** | `gemini-3.8-flash` (Default), `gemini-3.5-flash-lite`, `gemini-4-hydrogen`, `gemini-4-argon`, `gemini-4-carbon` | High token speed, native structured JSON schema, configurable thinking levels (`low`, `medium`, `high`). |
-| **Anthropic Claude** | `claude-3-7-sonnet-20250219`, `claude-3-5-sonnet-20241022`, `claude-3-5-haiku-20241022`, `claude-3-opus-20240229` | Superior nuanced prose, tool-call structured outputs, exceptional technical depth. |
-| **OpenAI ChatGPT** | `gpt-4o`, `gpt-4o-mini`, `o1`, `o3-mini`, `gpt-4-turbo` | Developer message role separation, official beta structured outputs parsing, deep reasoning. |
-| **Cursor / Custom** | `cursor-small`, `llama3.3`, `qwen2.5`, `deepseek-r1`, custom | Configurable `base_url` for Ollama, OpenRouter, vLLM, LM Studio, or Cursor proxies. |
+| **`gemini-3.8-flash`** *(Default)* | High token speed & fast reasoning | Recommended flagship for outlines, drafting, and anti-slop review. |
+| **`gemini-3.5-flash-lite`** | Ultra-fast & lightweight | Quick drafts, rapid topic ideation, and keyword extraction. |
+| **`gemini-4-hydrogen`** | High performance preview | Complex domain topics, deep research synthesis, and technical manuals. |
+| **`gemini-4-argon`** | Balanced multimodal preview | Multimodal analysis, architecture walkthroughs, and technical diagrams. |
+| **`gemini-4-carbon`** | Heavy reasoning preview | Deep analytical essays, intricate code breakdowns, and nuanced critiques. |
 
-Switch active providers with a single click in **Settings & Model Studio**. Diagnostics test authentication and connectivity with real-time latency reporting.
+### Configurable Thinking Budget
+Tune the depth of reasoning for Gemini models directly from **Settings & Gemini Model Studio**:
+- **`low`**: Optimized for rapid turnaround on structured sections.
+- **`medium`** *(Default)*: Balanced depth for substantive, evidence-grounded prose.
+- **`high`**: Deep analytical reasoning for complex technical topics.
+
+### Live Account Model Discovery
+Click **Discover Models** in Settings to query the official Google Gemini API and discover all models available to your Google AI Studio account.
 
 ---
 
@@ -86,12 +95,9 @@ BlogForge eliminates generic, predictable AI-isms through a rigorous multi-tier 
 ## 6. Technology Stack
 
 - **Runtime:** Python 3.11+ (Python 3.12 recommended)
-- **Desktop UI:** PySide6 (Qt for Python)
-- **AI SDKs:**
-  - Google GenAI SDK (`google-genai>=2.20.0`)
-  - Anthropic SDK (`anthropic>=0.30.0,<1.0.0`)
-  - OpenAI SDK (`openai>=1.50.0,<2.0.0`)
-- **Data Validation & Modeling:** Pydantic v2
+- **Desktop UI:** PySide6 (Qt for Python 6.8+)
+- **AI Intelligence:** Google GenAI SDK (`google-genai>=2.20.0,<3.0.0`)
+- **Data Modeling & Validation:** Pydantic v2 (`pydantic>=2.10.0,<3.0.0`)
 - **Configuration:** Python-Dotenv
 - **Resilience:** Tenacity (exponential backoff retry loops)
 - **Syntax Highlighting:** Pygments
@@ -99,7 +105,7 @@ BlogForge eliminates generic, predictable AI-isms through a rigorous multi-tier 
 
 ---
 
-## 5. Application Interface
+## 7. Application Interface
 
 ```text
 +-----------------------------------------------------------------------------------------------+
@@ -109,7 +115,7 @@ BlogForge eliminates generic, predictable AI-isms through a rigorous multi-tier 
 |                                                                                               |
 |  Recent Manuscripts                                Readiness Checklist                        |
 |  +-----------------------------------------------+ +----------------------------------------+ |
-|  | Title                   | Status  | Words     | | ● Gemini API Configured (gemini-3.8-fl)| |
+|  | Title                   | Status  | Words     | | ● Gemini Configured (gemini-3.8-flash) | |
 |  |-------------------------+---------+-----------| | ● Project Active                       | |
 |  | Low-Latency eBPF Observ | Draft   | 1,420     | | ○ Next.js Sync Off                     | |
 |  +-----------------------------------------------+ +----------------------------------------+ |
@@ -135,7 +141,7 @@ BlogForge eliminates generic, predictable AI-isms through a rigorous multi-tier 
 
 ---
 
-## 6. Project Architecture
+## 8. Project Architecture
 
 BlogForge strictly separates UI components from core business logic:
 
@@ -145,7 +151,7 @@ BlogForge/
 │   ├── core/              # Config loader, logging, exceptions, constants
 │   ├── models/            # Domain models (Article, Section, SEO, Provider)
 │   ├── projects/          # Project CRUD, brand profiles, and JSON repository
-│   ├── providers/         # Gemini and Search providers
+│   ├── providers/         # Google Gemini provider and Search provider
 │   ├── generation/        # Outline, writer, reviewer, pipeline orchestration
 │   ├── content/           # Topic-aware contextual filtering engine
 │   ├── export/            # Markdown, HTML, JSON exporters
@@ -163,23 +169,19 @@ Detailed architectural diagrams are documented in [`docs/ARCHITECTURE.md`](docs/
 
 ---
 
-## 7. Prerequisites
+## 9. Prerequisites
 
 - Python 3.11 or newer (Python 3.12 recommended).
-- An API Key for at least one supported intelligence provider:
-  - **Google Gemini:** [Google AI Studio](https://aistudio.google.com/)
-  - **Anthropic Claude:** [Anthropic Console](https://console.anthropic.com/)
-  - **OpenAI ChatGPT:** [OpenAI Platform](https://platform.openai.com/)
-  - **Cursor / Local LLMs:** Any local OpenAI-compatible endpoint (Ollama, LM Studio, vLLM) or proxy.
+- A Google Gemini API Key from [Google AI Studio](https://aistudio.google.com/).
 
 ---
 
-## 8. Quick Start
+## 10. Quick Start
 
 ### Windows (Automated Setup)
 Clone the repository and run the setup script:
 ```cmd
-git clone https://github.com/your-username/BlogForge.git
+git clone https://github.com/rafayshhh/blogforge.git
 cd BlogForge
 setup.bat
 ```
@@ -191,7 +193,7 @@ run.bat
 ### Manual Installation (All Platforms)
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/your-username/BlogForge.git
+   git clone https://github.com/rafayshhh/blogforge.git
    cd BlogForge
    ```
 
@@ -217,29 +219,13 @@ run.bat
    ```bash
    cp .env.example .env
    ```
-   Configure your chosen AI provider inside `.env` (or configure it in the app GUI):
+   Add your Google Gemini API key inside `.env` (or enter it in the app GUI under Settings):
    ```env
-   # Active Provider: gemini, anthropic, openai, or cursor
    AI_PROVIDER=gemini
-
-   # Google Gemini Configuration
    GEMINI_API_KEY=your_gemini_api_key_here
    GEMINI_MODEL=gemini-3.8-flash
    GEMINI_THINKING_LEVEL=medium
-
-   # Anthropic Claude Configuration (Optional)
-   ANTHROPIC_API_KEY=your_claude_api_key_here
-   ANTHROPIC_MODEL=claude-3-5-sonnet-20241022
-
-   # OpenAI ChatGPT Configuration (Optional)
-   OPENAI_API_KEY=your_openai_api_key_here
-   OPENAI_MODEL=gpt-4o
-
-   # Cursor / Local Endpoint Configuration (Optional)
-   CURSOR_BASE_URL=http://localhost:11434/v1
-   CURSOR_MODEL=cursor-small
    ```
-   *(Note: You can switch providers and test keys anytime in the **Settings & Model Studio** panel).*
 
 5. **Run BlogForge:**
    ```bash
@@ -248,16 +234,16 @@ run.bat
 
 ---
 
-## 9. Testing & Quality Assurance
+## 11. Testing & Quality Assurance
 
-Run the comprehensive test suite with pytest (144 unit, integration, stress, and GUI tests):
+Run the comprehensive test suite with pytest:
 ```bash
-pytest tests/
+pytest tests/ -p no:cov -p no:anyio
 ```
 
 Check static type annotations with mypy:
 ```bash
-mypy app --explicit-package-bases
+mypy app --explicit-package-bases --ignore-missing-imports
 ```
 
 Verify PEP 8 compliance with flake8:
@@ -267,18 +253,17 @@ flake8 app tests --max-line-length=120
 
 ---
 
-## 10. Programmatic Python API
+## 12. Programmatic Python API
 
-You can import and use BlogForge's multi-provider generation pipeline in your own scripts:
+You can import and use BlogForge's generation pipeline in your own scripts:
 
 ```python
 from app.providers.factory import create_provider
 from app.generation.pipeline import GenerationPipeline
 from app.generation.models import GenerationRequest
 
-# 1. Instantiate any supported provider (e.g. 'gemini', 'anthropic', 'openai', 'cursor')
-ai = create_provider(provider_name="anthropic", api_key="sk-ant-...", model="claude-3-5-sonnet-20241022")
-# or: ai = create_provider(provider_name="gemini", api_key="AIzaSy...")
+# 1. Instantiate Google Gemini provider
+ai = create_provider(provider_name="gemini", api_key="AIzaSy...")
 
 # 2. Initialize the generation pipeline
 pipeline = GenerationPipeline(ai)
@@ -300,18 +285,19 @@ final = pipeline.finalize_article(article, req)
 
 print(f"Generated manuscript '{final.title}' with {len(final.sections)} sections ({len(final.content.split())} words).")
 ```
+
 For complete details, see [`docs/API.md`](docs/API.md).
 
 ---
 
-## 11. Known Limitations
+## 13. Known Limitations
 
 - **Web Search Provider:** BlogForge includes a `MockSearchProvider` out of the box for testing and deterministic generation. Integration with live search APIs (e.g. Google Search Grounding or Serper) is pluggable via `SearchProvider`.
 - **Desktop Single-User:** BlogForge is optimized for single-workstation local development rather than multi-user concurrent team editing.
 
 ---
 
-## 12. Documentation Index
+## 14. Documentation Index
 
 - [Architecture Overview](docs/ARCHITECTURE.md)
 - [Development Guide](docs/DEVELOPMENT.md)
@@ -324,21 +310,21 @@ For complete details, see [`docs/API.md`](docs/API.md).
 
 ---
 
-## 13. Contributing
+## 15. Contributing
 
 Contributions are warmly welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for details on code style, issue reporting, and pull request procedures.
 
 ---
 
-## 14. License
+## 16. License
 
 BlogForge is released as open-source software under the [MIT License](LICENSE).  
 Copyright (c) 2026 RafayShhh.
 
 ---
 
-## 15. Acknowledgments
+## 17. Acknowledgments
 
 - Built with [PySide6](https://www.qt.io/qt-for-python) (The Qt Company).
-- Powered by [Google GenAI SDK](https://github.com/google-gemini/generative-ai-python) and the Gemini family of models.
+- Powered exclusively by [Google GenAI SDK](https://github.com/google-gemini/generative-ai-python) and the Google Gemini family of models.
 - Structured with [Pydantic](https://docs.pydantic.dev/).

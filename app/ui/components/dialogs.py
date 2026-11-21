@@ -170,7 +170,7 @@ class GeneratorWorkerThread(QThread):
 
     def run(self):
         try:
-            self.progress_status.emit("Initializing AI intelligence provider...", 10)
+            self.progress_status.emit("Initializing Google Gemini AI engine...", 10)
             provider = resolve_active_provider(api_key=self.api_key if self.api_key else None)
             self.pipeline = GenerationPipeline(ai_provider=provider)
 
@@ -192,17 +192,7 @@ class GeneratorWorkerThread(QThread):
 
             self.progress_status.emit("Performing automated editorial review...", 85)
             try:
-                review = self.pipeline.review_article(article, self.request)
-                if review:
-                    score = review.quality_score if review.quality_score is not None else 85
-                    findings = []
-                    if review.brand_violations:
-                        findings.append(f"Brand violations: {', '.join(review.brand_violations)}")
-                    if review.repetition_issues:
-                        findings.append(f"Repetitions: {len(review.repetition_issues)}")
-                    article.content += f"\n\n<!-- Editorial Review Score: {score}/100 -->\n"
-                    if findings:
-                        article.content += f"<!-- Review Notes: {'; '.join(findings)} -->\n"
+                self.pipeline.review_article(article, self.request)
             except Exception:
                 pass
 
@@ -387,22 +377,11 @@ class ArticleGeneratorDialog(QDialog):
             QMessageBox.warning(self, "Topic Required", "Please enter an article topic to begin generation.")
             return
 
-        from app.core.config import get_active_provider_name
-        p_name = get_active_provider_name()
-        api_key = None
-        if p_name == "gemini":
-            api_key = os.getenv("GEMINI_API_KEY", "")
-        elif p_name == "anthropic":
-            api_key = os.getenv("ANTHROPIC_API_KEY", "")
-        elif p_name == "openai":
-            api_key = os.getenv("OPENAI_API_KEY", "")
-        elif p_name == "cursor":
-            api_key = os.getenv("CURSOR_API_KEY", "") or "sk-local-proxy-key"
-
-        if not api_key and p_name != "cursor":
+        api_key = os.getenv("GEMINI_API_KEY", "")
+        if not api_key:
             QMessageBox.warning(
                 self, "Missing API Credentials",
-                f"{p_name.capitalize()} credentials not found. Please configure them in Settings first."
+                "Google Gemini credentials not found. Please configure your API key in Settings first."
             )
             return
 

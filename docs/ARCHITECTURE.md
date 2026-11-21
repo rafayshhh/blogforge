@@ -52,11 +52,11 @@ BlogForge is designed around four core architectural principles:
 |                                    |  |                                    |
 | - ProjectRepository (Local JSON)   |  | - AIProvider (Abstract Base)       |
 | - File Exporters:                  |  | - GeminiProvider (google-genai)    |
-|   * Markdown Exporter              |  | - AnthropicProvider (anthropic)    |
-|   * HTML Exporter                  |  | - OpenAIProvider (openai)          |
-|   * JSON Exporter                  |  | - CustomOpenAIProvider (Cursor)    |
-|   * NextJSExporter (SSG sync)      |  | - Provider Factory & Resolution    |
-|                                    |  | - SearchProvider (Mock / Pluggable)|
+|   * Markdown Exporter              |  | - Provider Factory & Resolution    |
+|   * HTML Exporter                  |  | - SearchProvider (Mock / Pluggable)|
+|   * JSON Exporter                  |  |                                    |
+|   * NextJSExporter (SSG sync)      |  |                                    |
+|                                    |  |                                    |
 +------------------------------------+  +------------------------------------+
 ```
 
@@ -86,12 +86,9 @@ Article generation follows a strict multi-step workflow:
 5. **FAQ Synthesis:** Extracts logical reader questions and synthesizes concise answers.
 6. **Persistence:** Saves the completed artifact to `data/articles/{run_id}.json` and purges partial drafts.
 
-### 3.4 Multi-Provider AI Architecture (`app/providers/`)
-The AI provider layer decouples business logic from specific vendor implementations through an extensible abstract interface:
+### 3.4 Google Gemini AI Architecture (`app/providers/`)
+The AI provider layer couples business logic to Google's official `google-genai` SDK through an extensible abstract interface:
 - **`AIProvider`:** Abstract base defining `generate()`, `generate_structured()`, `diagnose_connection()`, and `list_available_models()`.
-- **`GeminiProvider`:** Uses Google's official `google-genai` SDK. Supports Gemini 3.8/3.5 and 4 series with thinking budgets (`thinking_level="medium"`) and native structured JSON schemas.
-- **`AnthropicProvider`:** Uses `anthropic` SDK with tool-calling structured output for Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku, and Opus.
-- **`OpenAIProvider`:** Uses `openai` SDK with developer message handling for reasoning models (o1, o3-mini) and beta structured output parsing for GPT-4o.
-- **`CustomOpenAIProvider`:** Supports arbitrary `base_url` and custom model strings for Cursor proxies, Ollama, OpenRouter, vLLM, and LM Studio.
+- **`GeminiProvider`:** Uses Google's official `google-genai` SDK. Supports Gemini 3.8/3.5 and 4 series with thinking budgets (`thinking_level="medium"`), account model discovery, and native structured Pydantic schemas.
 - **Factory & Resolver (`app/providers/factory.py`):** Centralizes instantiation and dynamic environment resolution via `resolve_active_provider()`.
 - **Resilience:** All network calls implement exponential backoff retry loops on transient HTTP 429 and 5xx errors via `tenacity`.

@@ -49,5 +49,5 @@ class Article(BaseModel):
     sources: List[str] = Field(default_factory=list)
     internal_links: List[str] = Field(default_factory=list)
     seo: Dict[str, Any] = Field(default_factory=dict)
-    seo_metadata: Optional[SEOMetadata] = Field(default_factory=SEOMetadata)
+    seo_metadata: SEOMetadata = Field(default_factory=SEOMetadata)
     seo_audit: Optional[Any] = None

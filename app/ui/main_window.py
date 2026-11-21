@@ -14,7 +14,6 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt
 
 from app.core.constants import APP_NAME, APP_VERSION
-from app.core.config import get_active_provider_name
 from app.projects.service import ProjectService
 from app.projects.models import Project
 from app.ui.dashboard import DashboardWidget
@@ -249,16 +248,7 @@ class MainWindow(QMainWindow):
 
     def refresh_dashboard_state(self) -> None:
         """Syncs environment status and counts with the dashboard view."""
-        p_name = get_active_provider_name()
-        has_key = False
-        if p_name == "gemini":
-            has_key = bool(os.getenv("GEMINI_API_KEY"))
-        elif p_name == "anthropic":
-            has_key = bool(os.getenv("ANTHROPIC_API_KEY"))
-        elif p_name == "openai":
-            has_key = bool(os.getenv("OPENAI_API_KEY"))
-        elif p_name == "cursor":
-            has_key = bool(os.getenv("CURSOR_API_KEY")) or True
+        has_key = bool(os.getenv("GEMINI_API_KEY"))
 
         active_p = self.get_active_project()
         has_proj = active_p is not None
@@ -271,8 +261,7 @@ class MainWindow(QMainWindow):
         self.dashboard_view.update_checklist(
             has_gemini=has_key,
             has_project=has_proj,
-            has_nextjs=has_nextjs,
-            provider_name=p_name
+            has_nextjs=has_nextjs
         )
 
         # Build project lookup dictionary for friendly names
@@ -304,24 +293,10 @@ class MainWindow(QMainWindow):
 
     def update_top_model_label(self) -> None:
         """Updates model text in top navigation bar."""
-        p_name = get_active_provider_name()
-        if p_name == "gemini":
-            model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
-            thinking = os.getenv("GEMINI_THINKING_LEVEL", "medium")
-            self.lbl_top_model.setText(f"{model} ({thinking})")
-            self.lbl_top_model.setToolTip(f"Active Provider: Google Gemini ({model})")
-        elif p_name == "anthropic":
-            model = os.getenv("ANTHROPIC_MODEL", "claude-3-7-sonnet-latest")
-            self.lbl_top_model.setText(f"{model}")
-            self.lbl_top_model.setToolTip(f"Active Provider: Anthropic Claude ({model})")
-        elif p_name == "openai":
-            model = os.getenv("OPENAI_MODEL", "gpt-4o")
-            self.lbl_top_model.setText(f"{model}")
-            self.lbl_top_model.setToolTip(f"Active Provider: OpenAI ChatGPT ({model})")
-        elif p_name == "cursor":
-            model = os.getenv("CURSOR_MODEL", "cursor-fast")
-            self.lbl_top_model.setText(f"{model}")
-            self.lbl_top_model.setToolTip(f"Active Provider: Cursor / Custom OpenAI ({model})")
+        model = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+        thinking = os.getenv("GEMINI_THINKING_LEVEL", "medium")
+        self.lbl_top_model.setText(f"{model} ({thinking})")
+        self.lbl_top_model.setToolTip(f"Active Google Gemini model ({model})")
 
     def launch_article_generator(self) -> None:
         """Opens the AI Article Production Studio dialog."""

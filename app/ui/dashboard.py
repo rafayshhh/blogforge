@@ -226,16 +226,14 @@ class DashboardWidget(QWidget):
         self,
         has_gemini: bool,
         has_project: bool,
-        has_nextjs: bool,
-        provider_name: str = "Gemini"
+        has_nextjs: bool
     ) -> None:
-        """Updates the system readiness indicators with multi-provider awareness."""
-        display_prov = provider_name.capitalize()
+        """Updates the system readiness indicators for Google Gemini and local workspace."""
         if has_gemini:
-            self.chk_gemini.setText(f"● {display_prov} Configured")
+            self.chk_gemini.setText("● Gemini Configured")
             self.chk_gemini.setStyleSheet("color: #15803D; font-size: 12px; font-weight: 500;")
         else:
-            self.chk_gemini.setText(f"○ {display_prov} Missing")
+            self.chk_gemini.setText("○ Gemini Key Missing")
             self.chk_gemini.setStyleSheet("color: #B91C1C; font-size: 12px;")
 
         if has_project:
