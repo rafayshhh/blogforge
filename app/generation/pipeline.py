@@ -15,8 +15,15 @@ from app.content.context import FilteredProjectContext
 
 
 class GenerationPipeline:
-    def __init__(self, ai_provider: AIProvider):
+    def __init__(
+        self,
+        ai_provider: AIProvider,
+        generation_dir: str = "data/generation",
+        articles_dir: str = "data/articles",
+    ):
         self.ai = ai_provider
+        self.generation_dir = generation_dir
+        self.articles_dir = articles_dir
         self.outline_gen = OutlineGenerator(self.ai)
         self.writer = ArticleWriter(self.ai)
         self.reviewer = ArticleReviewer(self.ai)
@@ -122,13 +129,13 @@ class GenerationPipeline:
             article.created_at = now
         article.updated_at = now
 
-        os.makedirs("data/articles", exist_ok=True)
-        path = f"data/articles/{self.run_id}.json"
+        os.makedirs(self.articles_dir, exist_ok=True)
+        path = os.path.join(self.articles_dir, f"{self.run_id}.json")
         with open(path, "w", encoding="utf-8") as f:
             f.write(article.model_dump_json(indent=2))
 
         # Clean up intermediate partial file to avoid duplicate listings
-        partial_path = f"data/generation/{self.run_id}_partial.json"
+        partial_path = os.path.join(self.generation_dir, f"{self.run_id}_partial.json")
         if os.path.exists(partial_path):
             try:
                 os.remove(partial_path)
@@ -161,7 +168,7 @@ class GenerationPipeline:
         )
 
     def _save_intermediate(self, article: Article):
-        os.makedirs("data/generation", exist_ok=True)
-        path = f"data/generation/{self.run_id}_partial.json"
+        os.makedirs(self.generation_dir, exist_ok=True)
+        path = os.path.join(self.generation_dir, f"{self.run_id}_partial.json")
         with open(path, "w", encoding="utf-8") as f:
             f.write(article.model_dump_json(indent=2))

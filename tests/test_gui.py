@@ -2,12 +2,14 @@
 
 import os
 import json
-from unittest.mock import MagicMock, patch
-from PySide6.QtWidgets import QApplication, QMessageBox, QInputDialog, QFileDialog
+from unittest.mock import patch
+from PySide6.QtWidgets import QApplication, QMessageBox, QInputDialog, QFileDialog, QDialog
 
 from app.ui.theme import apply_theme
 from app.ui.main_window import MainWindow
 from app.ui.settings import SettingsWidget, TestConnectionThread
+from app.ui.components.tutorial import TutorialDialog
+from app.providers.gemini import GeminiProvider
 from app.models.article import Article, ArticleSection
 
 
@@ -177,9 +179,8 @@ def test_articles_widget_editor_preview_and_export(tmp_path, monkeypatch):
     assert "Updated Header" in a_widget.html_preview.toPlainText()
 
     # Save changes
-    with patch.object(QMessageBox, "information") as mock_info:
-        a_widget.save_article_changes()
-        assert mock_info.called
+    a_widget.save_article_changes()
+    assert "Saved locally" in a_widget.lbl_save_status.text()
 
     with open(art_path, "r", encoding="utf-8") as f:
         saved_data = json.load(f)
@@ -264,6 +265,46 @@ def test_settings_widget_interactions(tmp_path, monkeypatch):
     settings.on_test_result(False, "Failed auth")
     assert "✕ Failed auth" in settings.lbl_status.text()
 
+    # About Section & Dialogs
+    with patch("PySide6.QtGui.QDesktopServices.openUrl") as mock_url:
+        settings.open_website()
+        assert mock_url.called
+
+    with patch.object(QMessageBox, "exec"):
+        settings.show_privacy_policy()
+        settings.show_terms_of_service()
+
+    with patch.object(QDialog, "exec"):
+        settings.show_licenses_dialog()
+
+
+def test_tutorial_dialog_navigation(tmp_path, monkeypatch):
+    """Verify TutorialDialog step traversal, shortcuts, and action buttons."""
+    monkeypatch.chdir(tmp_path)
+    get_qapp()
+    win = MainWindow()
+    dlg = TutorialDialog(win)
+
+    assert dlg.stack.count() == 5
+    assert dlg.current_step == 0
+    assert not dlg.btn_prev.isEnabled()
+    assert dlg.btn_next.text() == "Next →"
+
+    # Step through to final step
+    for _ in range(4):
+        dlg._next_step()
+
+    assert dlg.current_step == 4
+    assert dlg.btn_prev.isEnabled()
+    assert dlg.btn_next.text() == "Finish ✓"
+
+    # Step back
+    dlg._prev_step()
+    assert dlg.current_step == 3
+
+    # Test action shortcut execution
+    dlg._handle_action_shortcut()
+
 
 def test_connection_thread_execution():
     """Verify TestConnectionThread emits expected signal values on success and failure."""
@@ -271,12 +312,11 @@ def test_connection_thread_execution():
     results = []
 
     # Successful connection mock
-    with patch("app.providers.gemini.GeminiProvider") as mock_prov_cls:
-        mock_instance = MagicMock()
-        mock_instance.generate.return_value = MagicMock(text="OK")
-        mock_instance.list_available_models.return_value = ["gemini-3.8-flash"]
-        mock_prov_cls.return_value = mock_instance
-
+    with patch.object(
+        GeminiProvider,
+        "diagnose_connection",
+        return_value=(True, "Connected successfully to Google Gemini.", {"test_call": True}),
+    ):
         thread = TestConnectionThread(api_key="KEY", model="gemini-3.8-flash")
         thread.result.connect(lambda ok, msg: results.append((ok, msg)))
         thread.run()

@@ -22,6 +22,7 @@ from app.ui.articles import ArticlesWidget
 from app.ui.research import ResearchWidget
 from app.ui.settings import SettingsWidget
 from app.ui.components.dialogs import ArticleGeneratorDialog
+from app.ui.components.tutorial import TutorialDialog
 
 
 class MainWindow(QMainWindow):
@@ -109,6 +110,17 @@ class MainWindow(QMainWindow):
         self.lbl_top_model.setStyleSheet("color: #8C877F; font-size: 11px; font-family: monospace;")
         self.lbl_top_model.setToolTip("Active Google Gemini model")
         top_layout.addWidget(self.lbl_top_model)
+
+        top_layout.addSpacing(6)
+
+        # Quick Action: Guided Tutorial
+        self.btn_top_tutorial = QPushButton("Tutorial")
+        self.btn_top_tutorial.setObjectName("ghostBtn")
+        self.btn_top_tutorial.setFixedHeight(28)
+        self.btn_top_tutorial.setCursor(Qt.PointingHandCursor)
+        self.btn_top_tutorial.setToolTip("Launch the interactive BlogForge guided tour and workflow tutorial.")
+        self.btn_top_tutorial.clicked.connect(self.launch_tutorial)
+        top_layout.addWidget(self.btn_top_tutorial)
 
         # Quick Action: AI Studio
         self.btn_top_studio = QPushButton("AI Studio")
@@ -297,6 +309,11 @@ class MainWindow(QMainWindow):
         thinking = os.getenv("GEMINI_THINKING_LEVEL", "medium")
         self.lbl_top_model.setText(f"{model} ({thinking})")
         self.lbl_top_model.setToolTip(f"Active Google Gemini model ({model})")
+
+    def launch_tutorial(self) -> None:
+        """Opens the interactive GUI tutorial walkthrough."""
+        dlg = TutorialDialog(self)
+        dlg.exec()
 
     def launch_article_generator(self) -> None:
         """Opens the AI Article Production Studio dialog."""

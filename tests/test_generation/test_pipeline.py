@@ -24,12 +24,14 @@ def test_pipeline_generate_outline():
     assert len(outline.sections) == 1
 
 
-def test_pipeline_generate_article():
+def test_pipeline_generate_article(tmp_path):
     ai = MagicMock()
     mock_response = MagicMock(text="Mock section content")
     ai.generate.return_value = mock_response
 
-    pipeline = GenerationPipeline(ai)
+    gen_dir = str(tmp_path / "generation")
+    art_dir = str(tmp_path / "articles")
+    pipeline = GenerationPipeline(ai, generation_dir=gen_dir, articles_dir=art_dir)
     req = GenerationRequest(topic="Test")
     outline = ArticleOutline(
         title="Test Title",
@@ -44,11 +46,13 @@ def test_pipeline_generate_article():
     assert "Mock section content" in article.content
 
 
-def test_pipeline_cancellation():
+def test_pipeline_cancellation(tmp_path):
     ai = MagicMock()
     ai.generate.return_value = MagicMock(text="Content")
 
-    pipeline = GenerationPipeline(ai)
+    gen_dir = str(tmp_path / "generation")
+    art_dir = str(tmp_path / "articles")
+    pipeline = GenerationPipeline(ai, generation_dir=gen_dir, articles_dir=art_dir)
     req = GenerationRequest(topic="Test")
     outline = ArticleOutline(
         title="Test Title",

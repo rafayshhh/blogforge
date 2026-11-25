@@ -7,6 +7,7 @@ from PySide6.QtWidgets import (
     QTableWidget, QTableWidgetItem, QHeaderView, QFrame
 )
 from PySide6.QtCore import Signal, Qt
+from app.ui.components.tutorial import TutorialDialog
 
 
 class DashboardWidget(QWidget):
@@ -67,6 +68,14 @@ class DashboardWidget(QWidget):
         btn_projects.setCursor(Qt.PointingHandCursor)
         btn_projects.clicked.connect(lambda: self.navigate_to.emit(1))
         actions_bar.addWidget(btn_projects)
+
+        btn_tutorial = QPushButton("Tutorial")
+        btn_tutorial.setObjectName("ghostBtn")
+        btn_tutorial.setFixedHeight(34)
+        btn_tutorial.setCursor(Qt.PointingHandCursor)
+        btn_tutorial.setToolTip("Open interactive walkthrough and feature tutorial.")
+        btn_tutorial.clicked.connect(self._open_tutorial)
+        actions_bar.addWidget(btn_tutorial)
 
         header_row.addLayout(actions_bar)
         layout.addLayout(header_row)
@@ -329,3 +338,11 @@ class DashboardWidget(QWidget):
                 self.doc_table.setItem(row, 4, act_item)
             except Exception:
                 continue
+
+    def _open_tutorial(self):
+        parent_win = self.window()
+        if parent_win and hasattr(parent_win, "launch_tutorial"):
+            parent_win.launch_tutorial()
+        else:
+            dlg = TutorialDialog(self)
+            dlg.exec()

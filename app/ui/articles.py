@@ -587,6 +587,10 @@ class ArticlesWidget(QWidget):
                 os.remove(self.current_file_path)
                 self.current_article = None
                 self.current_file_path = None
+                self.md_editor.clear()
+                self.html_preview.clear()
+                self.lbl_metrics.setText("0 words | 0 characters | ~0 min read")
+                self.lbl_save_status.setText("No document selected.")
                 self.refresh_articles()
                 self._update_action_states()
                 if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):

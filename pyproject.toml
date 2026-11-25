@@ -13,15 +13,23 @@ authors = [
     { name = "BlogForge Contributors" }
 ]
 keywords = [
-    "blogging",
-    "ai",
     "gemini",
-    "content-creation",
+    "google-gemini",
     "pyside6",
-    "desktop-app",
+    "qt6",
+    "ai-writing",
+    "content-creation",
+    "blog-generator",
+    "article-writer",
     "seo",
-    "markdown",
-    "nextjs"
+    "anti-slop",
+    "desktop-app",
+    "markdown-editor",
+    "nextjs",
+    "local-first",
+    "editorial-studio",
+    "gemini-3-flash",
+    "gemini-4"
 ]
 classifiers = [
     "Development Status :: 4 - Beta",

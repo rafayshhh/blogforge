@@ -6,9 +6,10 @@ from typing import Optional, List, Tuple
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QComboBox, QMessageBox,
-    QScrollArea, QFrame
+    QScrollArea, QFrame, QDialog, QTextEdit
 )
-from PySide6.QtCore import QThread, Signal
+from PySide6.QtCore import QThread, Signal, QUrl, Qt
+from PySide6.QtGui import QDesktopServices
 from app.core.constants import APP_NAME, APP_VERSION
 from app.core.config import save_config_value, get_thinking_level
 from app.providers.gemini import GeminiProvider
@@ -267,6 +268,172 @@ class SettingsWidget(QWidget):
             sys_layout.addLayout(row_inf)
 
         layout.addWidget(card_sys)
+
+        # ---------------------------------------------------------------------
+        # Card 5: Support & Transparency
+        # ---------------------------------------------------------------------
+        card_trans = self._create_card(
+            "SUPPORT & TRANSPARENCY",
+            "Privacy policy, zero ads, and rate-limiting safeguards"
+        )
+        trans_layout = QVBoxLayout(card_trans)
+        trans_layout.setContentsMargins(18, 16, 18, 16)
+        trans_layout.setSpacing(12)
+
+        row_ad = QHBoxLayout()
+        row_ad.setSpacing(12)
+        lbl_ad_icon = QLabel("🛡️")
+        lbl_ad_icon.setStyleSheet("font-size: 16px;")
+        row_ad.addWidget(lbl_ad_icon)
+
+        col_ad = QVBoxLayout()
+        col_ad.setSpacing(2)
+        lbl_ad_title = QLabel("100% Ad-Free & Local-First")
+        lbl_ad_title.setStyleSheet("color: #1C1917; font-size: 13px; font-weight: 600;")
+        col_ad.addWidget(lbl_ad_title)
+        lbl_ad_sub = QLabel(
+            "Zero advertisements, zero analytics tracking, and zero telemetry. All projects, brand profiles, "
+            "drafts, and articles are saved locally on your disk."
+        )
+        lbl_ad_sub.setWordWrap(True)
+        lbl_ad_sub.setStyleSheet("color: #78716C; font-size: 12px;")
+        col_ad.addWidget(lbl_ad_sub)
+        row_ad.addLayout(col_ad, 1)
+        trans_layout.addLayout(row_ad)
+
+        div_t = QFrame()
+        div_t.setFrameShape(QFrame.Shape.HLine)
+        div_t.setStyleSheet("color: #E7E5E4;")
+        trans_layout.addWidget(div_t)
+
+        row_cap = QHBoxLayout()
+        row_cap.setSpacing(12)
+        lbl_cap_icon = QLabel("⚡")
+        lbl_cap_icon.setStyleSheet("font-size: 16px;")
+        row_cap.addWidget(lbl_cap_icon)
+
+        col_cap = QVBoxLayout()
+        col_cap.setSpacing(2)
+        lbl_cap_title = QLabel("Direct Gemini Connection & Safeguards")
+        lbl_cap_title.setStyleSheet("color: #1C1917; font-size: 13px; font-weight: 600;")
+        col_cap.addWidget(lbl_cap_title)
+        lbl_cap_sub = QLabel(
+            "Requests connect directly to Google Generative AI endpoints. Automatic exponential backoff "
+            "and retry guards prevent API flood."
+        )
+        lbl_cap_sub.setWordWrap(True)
+        lbl_cap_sub.setStyleSheet("color: #78716C; font-size: 12px;")
+        col_cap.addWidget(lbl_cap_sub)
+        row_cap.addLayout(col_cap, 1)
+
+        badge_direct = QLabel("Direct Mode")
+        badge_direct.setStyleSheet("""
+            background-color: #FEF3C7;
+            color: #92400E;
+            border: 1px solid #FDE68A;
+            border-radius: 4px;
+            padding: 4px 8px;
+            font-size: 11px;
+            font-weight: 600;
+        """)
+        row_cap.addWidget(badge_direct)
+        trans_layout.addLayout(row_cap)
+        layout.addWidget(card_trans)
+
+        # ---------------------------------------------------------------------
+        # Card 6: About (Reference Design)
+        # ---------------------------------------------------------------------
+        card_about = self._create_card("ABOUT", "Application metadata, publisher, and licensing")
+        about_layout = QVBoxLayout(card_about)
+        about_layout.setContentsMargins(18, 16, 18, 16)
+        about_layout.setSpacing(10)
+
+        # App Identity
+        app_header_row = QHBoxLayout()
+        app_header_row.setSpacing(12)
+        lbl_app_icon = QLabel("✒️")
+        lbl_app_icon.setStyleSheet("font-size: 26px; padding: 2px;")
+        app_header_row.addWidget(lbl_app_icon)
+
+        app_title_col = QVBoxLayout()
+        app_title_col.setSpacing(2)
+        lbl_app_name = QLabel(APP_NAME)
+        lbl_app_name.setStyleSheet(
+            "color: #1C1917; font-size: 16px; font-weight: 700; font-family: 'Newsreader', serif;"
+        )
+        app_title_col.addWidget(lbl_app_name)
+        lbl_app_ver = QLabel(f"{APP_VERSION} (Build 2026.11)")
+        lbl_app_ver.setStyleSheet("color: #78716C; font-size: 12px;")
+        app_title_col.addWidget(lbl_app_ver)
+        app_header_row.addLayout(app_title_col, 1)
+        about_layout.addLayout(app_header_row)
+
+        metadata_items = [
+            ("Application Package ID", "com.kreatekode.blogforge", None),
+            ("Publisher", "KreateKode", None),
+            ("Developer", "KreateKode Dev Team", None),
+            ("Website", "https://github.com/rafayshhh/blogforge", self.open_website),
+            ("Privacy Policy", "Local-First Architecture • Zero Telemetry", self.show_privacy_policy),
+            ("Terms of Service", "MIT Open Source License • Safe Commercial Use", self.show_terms_of_service),
+        ]
+
+        for label_text, val_text, action_fn in metadata_items:
+            div_m = QFrame()
+            div_m.setFrameShape(QFrame.Shape.HLine)
+            div_m.setStyleSheet("color: #F0EDE8;")
+            about_layout.addWidget(div_m)
+
+            m_row = QHBoxLayout()
+            m_row.setContentsMargins(0, 4, 0, 4)
+            m_col = QVBoxLayout()
+            m_col.setSpacing(2)
+
+            lbl_title = QLabel(label_text)
+            lbl_title.setStyleSheet("color: #1C1917; font-size: 13px; font-weight: 500;")
+            m_col.addWidget(lbl_title)
+
+            lbl_detail = QLabel(val_text)
+            detail_color = "#C2410C" if action_fn else "#78716C"
+            lbl_detail.setStyleSheet(f"color: {detail_color}; font-size: 12px;")
+            m_col.addWidget(lbl_detail)
+            m_row.addLayout(m_col, 1)
+
+            if action_fn:
+                btn_act = QPushButton("Open →" if "http" in val_text else "View")
+                btn_act.setObjectName("ghostBtn")
+                btn_act.setFixedHeight(26)
+                btn_act.setCursor(Qt.PointingHandCursor)
+                btn_act.clicked.connect(action_fn)
+                m_row.addWidget(btn_act)
+
+            about_layout.addLayout(m_row)
+
+        div_lic = QFrame()
+        div_lic.setFrameShape(QFrame.Shape.HLine)
+        div_lic.setStyleSheet("color: #F0EDE8;")
+        about_layout.addWidget(div_lic)
+
+        lic_row = QHBoxLayout()
+        lic_row.setContentsMargins(0, 4, 0, 4)
+        lbl_lic_icon = QLabel("📄")
+        lbl_lic_icon.setStyleSheet("font-size: 14px;")
+        lic_row.addWidget(lbl_lic_icon)
+
+        lbl_lic_text = QLabel("Open Source Licenses")
+        lbl_lic_text.setStyleSheet("color: #1C1917; font-size: 13px; font-weight: 500;")
+        lic_row.addWidget(lbl_lic_text, 1)
+
+        btn_lic = QPushButton("›")
+        btn_lic.setObjectName("ghostBtn")
+        btn_lic.setStyleSheet("font-size: 18px; font-weight: 600; padding: 0 10px;")
+        btn_lic.setFixedHeight(26)
+        btn_lic.setCursor(Qt.PointingHandCursor)
+        btn_lic.clicked.connect(self.show_licenses_dialog)
+        lic_row.addWidget(btn_lic)
+
+        about_layout.addLayout(lic_row)
+        layout.addWidget(card_about)
+
         layout.addStretch()
 
         scroll.setWidget(container)
@@ -398,3 +565,83 @@ class SettingsWidget(QWidget):
         else:
             self.lbl_status.setText(f"✕ {message}")
             self.lbl_status.setStyleSheet("color: #B91C1C; font-size: 12px;")
+
+    def open_website(self):
+        """Opens the official BlogForge repository in user default browser."""
+        QDesktopServices.openUrl(QUrl("https://github.com/rafayshhh/blogforge"))
+
+    def show_privacy_policy(self):
+        """Displays the local-first transparency policy."""
+        msg = (
+            "<h3>BlogForge Privacy & Local-First Architecture</h3>"
+            "<p><b>Zero Telemetry & Local-First:</b> BlogForge operates completely on your local machine. "
+            "Zero user data, telemetry, analytics, drafts, or article contents are transmitted to any external server "
+            "except the official Google Gemini API when generating or researching content.</p>"
+            "<p><b>API Key Security:</b> Your Google Gemini API key is stored locally in your "
+            "workspace <code>.env</code> file and memory only. It is never transmitted to any third party.</p>"
+            "<p><b>Publisher:</b> KreateKode</p>"
+        )
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("BlogForge — Privacy Policy")
+        dlg.setText(msg)
+        dlg.setTextFormat(Qt.TextFormat.RichText)
+        dlg.exec()
+
+    def show_terms_of_service(self):
+        """Displays open source licensing and usage terms."""
+        msg = (
+            "<h3>BlogForge Terms of Service</h3>"
+            "<p>BlogForge is released as open-source software under the <b>MIT License</b>.</p>"
+            "<p>Permission is hereby granted, free of charge, to any person obtaining a copy "
+            "of this software and associated documentation files, to deal in the Software without restriction, "
+            "including without limitation the rights to use, copy, modify, merge, publish, distribute, "
+            "sublicense, and/or sell copies of the Software.</p>"
+            "<p>THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.</p>"
+            "<p><b>Publisher:</b> KreateKode</p>"
+        )
+        dlg = QMessageBox(self)
+        dlg.setWindowTitle("BlogForge — Terms of Service")
+        dlg.setText(msg)
+        dlg.setTextFormat(Qt.TextFormat.RichText)
+        dlg.exec()
+
+    def show_licenses_dialog(self):
+        """Opens interactive viewer for open source components and licenses."""
+        dlg = QDialog(self)
+        dlg.setWindowTitle("BlogForge — Open Source Licenses")
+        dlg.setFixedSize(580, 420)
+        lay = QVBoxLayout(dlg)
+        lay.setContentsMargins(20, 20, 20, 20)
+        lay.setSpacing(12)
+
+        lbl = QLabel("Open Source Components & Licenses")
+        lbl.setStyleSheet("font-size: 16px; font-weight: 700; color: #1C1917;")
+        lay.addWidget(lbl)
+
+        txt = QTextEdit()
+        txt.setReadOnly(True)
+        txt.setStyleSheet(
+            "background-color: #F9F8F6; border: 1px solid #E0DDD5; font-family: monospace; font-size: 11px;"
+        )
+        licenses_text = (
+            "BlogForge is powered by open source software:\n\n"
+            "• BlogForge (c) 2026 KreateKode — MIT License\n"
+            "• PySide6 / Qt6 — LGPLv3 License\n"
+            "• google-genai — Apache 2.0 License\n"
+            "• Pydantic v2 — MIT License\n"
+            "• Bleach & html5lib — Apache 2.0 License\n"
+            "• Python-Markdown — BSD License\n"
+            "• HTTPX — BSD-3-Clause License\n"
+            "• PyYAML — MIT License\n"
+            "• Rich — MIT License\n"
+        )
+        txt.setText(licenses_text)
+        lay.addWidget(txt, 1)
+
+        btn_close = QPushButton("Close")
+        btn_close.setObjectName("primaryBtn")
+        btn_close.setFixedHeight(32)
+        btn_close.clicked.connect(dlg.accept)
+        lay.addWidget(btn_close)
+
+        dlg.exec()
