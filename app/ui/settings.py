@@ -343,7 +343,7 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 6: About (Reference Design)
         # ---------------------------------------------------------------------
-        card_about = self._create_card("ABOUT", "Application metadata, publisher, and licensing")
+        card_about = self._create_card("ABOUT", "Application metadata, developer, and licensing")
         about_layout = QVBoxLayout(card_about)
         about_layout.setContentsMargins(18, 16, 18, 16)
         about_layout.setSpacing(10)
@@ -369,9 +369,8 @@ class SettingsWidget(QWidget):
         about_layout.addLayout(app_header_row)
 
         metadata_items = [
-            ("Application Package ID", "com.kreatekode.blogforge", None),
-            ("Publisher", "KreateKode", None),
-            ("Developer", "KreateKode Dev Team", None),
+            ("Application Package ID", "com.rafayshhh.blogforge", None),
+            ("Developer", "Muhammad Abdul Rafay", None),
             ("Website", "https://github.com/rafayshhh/blogforge", self.open_website),
             ("Privacy Policy", "Local-First Architecture • Zero Telemetry", self.show_privacy_policy),
             ("Terms of Service", "MIT Open Source License • Safe Commercial Use", self.show_terms_of_service),
@@ -579,7 +578,7 @@ class SettingsWidget(QWidget):
             "except the official Google Gemini API when generating or researching content.</p>"
             "<p><b>API Key Security:</b> Your Google Gemini API key is stored locally in your "
             "workspace <code>.env</code> file and memory only. It is never transmitted to any third party.</p>"
-            "<p><b>Publisher:</b> KreateKode</p>"
+            "<p><b>Developer:</b> Muhammad Abdul Rafay</p>"
         )
         dlg = QMessageBox(self)
         dlg.setWindowTitle("BlogForge — Privacy Policy")
@@ -597,7 +596,7 @@ class SettingsWidget(QWidget):
             "including without limitation the rights to use, copy, modify, merge, publish, distribute, "
             "sublicense, and/or sell copies of the Software.</p>"
             "<p>THE SOFTWARE IS PROVIDED 'AS IS', WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED.</p>"
-            "<p><b>Publisher:</b> KreateKode</p>"
+            "<p><b>Developer:</b> Muhammad Abdul Rafay</p>"
         )
         dlg = QMessageBox(self)
         dlg.setWindowTitle("BlogForge — Terms of Service")
@@ -625,7 +624,7 @@ class SettingsWidget(QWidget):
         )
         licenses_text = (
             "BlogForge is powered by open source software:\n\n"
-            "• BlogForge (c) 2026 KreateKode — MIT License\n"
+            "• BlogForge (c) 2026 Muhammad Abdul Rafay — MIT License\n"
             "• PySide6 / Qt6 — LGPLv3 License\n"
             "• google-genai — Apache 2.0 License\n"
             "• Pydantic v2 — MIT License\n"

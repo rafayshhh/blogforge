@@ -318,10 +318,9 @@ BlogForge/
 
 ---
 
-## 14. Publisher, Transparency & Support
+## 14. Developer, Transparency & Support
 
-- **Publisher:** KreateKode
-- **Developer:** KreateKode Dev Team
+- **Developer:** Muhammad Abdul Rafay
 - **Official Repository:** [https://github.com/rafayshhh/blogforge](https://github.com/rafayshhh/blogforge)
 - **Local-First Transparency:** BlogForge contains **zero advertisements**, **zero analytics tracking**, and **zero telemetry**.
 - **Direct Connection:** Your Google Gemini API requests travel directly between your machine and Google Generative AI endpoints. No middleman proxies or multi-tenant database relays.
@@ -331,4 +330,4 @@ BlogForge/
 ## 15. License
 
 BlogForge is released as open-source software under the [MIT License](LICENSE).  
-Copyright (c) 2026 KreateKode / RafayShhh.
+Copyright (c) 2026 Muhammad Abdul Rafay.
