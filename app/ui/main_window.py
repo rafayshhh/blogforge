@@ -50,8 +50,8 @@ class MainWindow(QMainWindow):
         top_header.setObjectName("topHeaderBar")
         top_header.setFixedHeight(48)
         top_layout = QHBoxLayout(top_header)
-        top_layout.setContentsMargins(20, 0, 20, 0)
-        top_layout.setSpacing(16)
+        top_layout.setContentsMargins(16, 0, 16, 0)
+        top_layout.setSpacing(10)
 
         # Brand Mark
         lbl_logo = QLabel("BLOGFORGE")
@@ -76,12 +76,12 @@ class MainWindow(QMainWindow):
 
         self.project_switcher = QComboBox()
         self.project_switcher.setFixedHeight(28)
-        self.project_switcher.setMinimumWidth(160)
-        self.project_switcher.setMaximumWidth(220)
+        self.project_switcher.setMinimumWidth(140)
+        self.project_switcher.setMaximumWidth(200)
         self.project_switcher.currentIndexChanged.connect(self.on_project_switched)
         top_layout.addWidget(self.project_switcher)
 
-        top_layout.addSpacing(16)
+        top_layout.addSpacing(8)
 
         # Segmented Navigation Tabs
         self.nav_buttons = []
@@ -334,18 +334,25 @@ class MainWindow(QMainWindow):
     ) -> None:
         """Opens the AI Article Production Studio pre-filled with research findings."""
         active_proj = self.get_active_project()
-        dlg = ArticleGeneratorDialog(self, active_project=active_proj)
+        dlg = ArticleGeneratorDialog(
+            self,
+            active_project=active_proj,
+            initial_strategy=strategy,
+            initial_sources=sources,
+        )
         if hasattr(dlg, "topic_input") and topic:
             dlg.topic_input.setText(topic)
-        if hasattr(dlg, "keywords_input") and sources:
-            # Extract keywords or domain hints from sources
-            existing = dlg.keywords_input.text().strip()
-            sources_hint = ", ".join([s[:40] for s in sources[:3] if s])
-            if not existing and sources_hint:
-                dlg.keywords_input.setText(sources_hint)
         if dlg.exec() == QDialog.DialogCode.Accepted:
             article = dlg.get_article()
             if article:
                 self.switch_tab(2)
                 self.articles_view.refresh_articles()
                 self.articles_view.select_article_by_slug(article.slug)
+
+    def closeEvent(self, event) -> None:
+        """Ensures background threads terminate cleanly on window close."""
+        if hasattr(self, "settings_view") and hasattr(self.settings_view, "cleanup_threads"):
+            self.settings_view.cleanup_threads()
+        if hasattr(self, "research_view") and hasattr(self.research_view, "cleanup_threads"):
+            self.research_view.cleanup_threads()
+        super().closeEvent(event)

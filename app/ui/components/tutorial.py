@@ -123,6 +123,10 @@ class TutorialDialog(QDialog):
                 background-color: #FDFCFA;
                 color: #1C1917;
             }
+            QDialog QLabel {
+                background-color: transparent;
+                border: none;
+            }
             #stepCard {
                 background-color: #FFFFFF;
                 border: 1px solid #E0DDD5;

@@ -4,7 +4,7 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QListWidget, QMessageBox, QTextEdit,
     QTabWidget, QInputDialog, QCheckBox, QFileDialog, QScrollArea,
-    QFrame
+    QFrame, QComboBox
 )
 from PySide6.QtCore import Qt
 
@@ -152,10 +152,27 @@ class ProjectsWidget(QWidget):
         sg_layout.addWidget(lbl_rules)
         self.editorial_rules_input = QTextEdit()
         self.editorial_rules_input.setPlaceholderText(
-            "List specific guidelines, phrases to use, buzzwords to avoid, and editorial standards..."
+            "List specific guidelines, writing structures, and editorial standards..."
         )
         self.editorial_rules_input.setFixedHeight(85)
         sg_layout.addWidget(self.editorial_rules_input)
+
+        # Preferred & Avoided Terminology
+        lbl_pref = QLabel("Preferred Brand Terminology (comma-separated)")
+        lbl_pref.setObjectName("caption")
+        sg_layout.addWidget(lbl_pref)
+        self.preferred_terms_input = QLineEdit()
+        self.preferred_terms_input.setPlaceholderText("e.g. deterministic, observability, zero-trust")
+        self.preferred_terms_input.setFixedHeight(34)
+        sg_layout.addWidget(self.preferred_terms_input)
+
+        lbl_avoid = QLabel("Avoided / Banned Clichés & Buzzwords (comma-separated)")
+        lbl_avoid.setObjectName("caption")
+        sg_layout.addWidget(lbl_avoid)
+        self.avoided_terms_input = QLineEdit()
+        self.avoided_terms_input.setPlaceholderText("e.g. synergy, leverage, game-changer, delve into")
+        self.avoided_terms_input.setFixedHeight(34)
+        sg_layout.addWidget(self.avoided_terms_input)
 
         sg_layout.addStretch()
         sg_scroll.setWidget(sg_inner)
@@ -262,6 +279,16 @@ class ProjectsWidget(QWidget):
         row_img.addWidget(btn_pick_img)
         pub_layout.addLayout(row_img)
 
+        lbl_fmt = QLabel("Next.js Export Format")
+        lbl_fmt.setObjectName("caption")
+        pub_layout.addWidget(lbl_fmt)
+
+        self.nextjs_format_combo = QComboBox()
+        self.nextjs_format_combo.addItems(["MARKDOWN", "JSON"])
+        self.nextjs_format_combo.setFixedHeight(32)
+        self.nextjs_format_combo.setFixedWidth(180)
+        pub_layout.addWidget(self.nextjs_format_combo)
+
         self.btn_test_nextjs = QPushButton("Verify Next.js Directory Access")
         self.btn_test_nextjs.setFixedHeight(34)
         self.btn_test_nextjs.clicked.connect(self.test_nextjs)
@@ -306,6 +333,8 @@ class ProjectsWidget(QWidget):
             self.brand_tone_input.setText(p.brand_profile.tone or "")
             self.audience_input.setText(p.brand_profile.target_audience or "")
             self.editorial_rules_input.setPlainText(p.brand_profile.writing_style or "")
+            self.preferred_terms_input.setText(", ".join(p.brand_profile.preferred_terms))
+            self.avoided_terms_input.setText(", ".join(p.brand_profile.avoided_terms))
 
             self.lbl_editing_project.setText(f"Editorial Style Guide: {p.name}")
 
@@ -324,10 +353,16 @@ class ProjectsWidget(QWidget):
                 self.nextjs_enabled.setChecked(p.nextjs_integration.enabled)
                 self.nextjs_content_dir.setText(p.nextjs_integration.content_directory or "")
                 self.nextjs_images_dir.setText(p.nextjs_integration.image_directory or "")
+                fmt_idx = self.nextjs_format_combo.findText(
+                    (p.nextjs_integration.export_format or "MARKDOWN").upper()
+                )
+                if fmt_idx >= 0:
+                    self.nextjs_format_combo.setCurrentIndex(fmt_idx)
             else:
                 self.nextjs_enabled.setChecked(False)
                 self.nextjs_content_dir.clear()
                 self.nextjs_images_dir.clear()
+                self.nextjs_format_combo.setCurrentIndex(0)
 
             if self.main_window and hasattr(self.main_window, "select_project"):
                 self.main_window.select_project(p.id)
@@ -353,11 +388,14 @@ class ProjectsWidget(QWidget):
         self.brand_tone_input.clear()
         self.audience_input.clear()
         self.editorial_rules_input.clear()
+        self.preferred_terms_input.clear()
+        self.avoided_terms_input.clear()
         self.prod_list.clear()
         self.url_list.clear()
         self.nextjs_enabled.setChecked(False)
         self.nextjs_content_dir.clear()
         self.nextjs_images_dir.clear()
+        self.nextjs_format_combo.setCurrentIndex(0)
         self.lbl_editing_project.setText("Create New Project & Style Guide")
         self.name_input.setFocus()
 
@@ -371,6 +409,10 @@ class ProjectsWidget(QWidget):
         desc = self.desc_input.toPlainText().strip()
         tone = self.brand_tone_input.text().strip()
 
+        pref_list = [t.strip() for t in self.preferred_terms_input.text().split(",") if t.strip()]
+        avoid_list = [t.strip() for t in self.avoided_terms_input.text().split(",") if t.strip()]
+        fmt_choice = self.nextjs_format_combo.currentText()
+
         if self.current_project_id:
             proj = self.service.get_project(self.current_project_id)
             if not proj:
@@ -381,10 +423,13 @@ class ProjectsWidget(QWidget):
             proj.brand_profile.tone = tone
             proj.brand_profile.target_audience = self.audience_input.text().strip()
             proj.brand_profile.writing_style = self.editorial_rules_input.toPlainText().strip()
+            proj.brand_profile.preferred_terms = pref_list
+            proj.brand_profile.avoided_terms = avoid_list
 
             proj.nextjs_integration.enabled = self.nextjs_enabled.isChecked()
             proj.nextjs_integration.content_directory = self.nextjs_content_dir.text().strip()
             proj.nextjs_integration.image_directory = self.nextjs_images_dir.text().strip()
+            proj.nextjs_integration.export_format = fmt_choice
 
             self.service.update_project(proj)
         else:
@@ -392,10 +437,13 @@ class ProjectsWidget(QWidget):
             proj.brand_profile.tone = tone
             proj.brand_profile.target_audience = self.audience_input.text().strip()
             proj.brand_profile.writing_style = self.editorial_rules_input.toPlainText().strip()
+            proj.brand_profile.preferred_terms = pref_list
+            proj.brand_profile.avoided_terms = avoid_list
 
             proj.nextjs_integration.enabled = self.nextjs_enabled.isChecked()
             proj.nextjs_integration.content_directory = self.nextjs_content_dir.text().strip()
             proj.nextjs_integration.image_directory = self.nextjs_images_dir.text().strip()
+            proj.nextjs_integration.export_format = fmt_choice
 
             self.service.update_project(proj)
             self.current_project_id = proj.id

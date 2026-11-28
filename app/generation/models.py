@@ -21,10 +21,15 @@ class GenerationRequest(BaseModel):
     keywords: List[str] = Field(default_factory=list)
     verified_sources: List[str] = Field(default_factory=list)
 
+    def model_post_init(self, __context) -> None:
+        if self.word_count_target is not None:
+            self.target_word_count = self.word_count_target
+        elif self.target_word_count is not None:
+            self.word_count_target = self.target_word_count
+
 
 class OutlineSection(BaseModel):
     """Structured outline entry representing a planned section."""
-    model_config = {"extra": "allow"}
 
     id: str
     heading: str
@@ -38,7 +43,6 @@ class OutlineSection(BaseModel):
 
 class ArticleOutline(BaseModel):
     """Complete planned outline structure before writing begins."""
-    model_config = {"extra": "allow"}
 
     title: str
     slug: str
@@ -48,7 +52,6 @@ class ArticleOutline(BaseModel):
 
 class ArticleReview(BaseModel):
     """Critical audit report of an article draft."""
-    model_config = {"extra": "allow"}
 
     unsupported_claims: List[str] = Field(default_factory=list)
     repetition_issues: List[str] = Field(default_factory=list)
@@ -69,6 +72,5 @@ class ArticleReview(BaseModel):
 
 class FAQData(BaseModel):
     """Structured container for generated FAQ items."""
-    model_config = {"extra": "allow"}
 
     faqs: List[FAQItem] = Field(default_factory=list)

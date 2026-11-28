@@ -55,6 +55,8 @@ class ArticleWriter:
             purpose=section.purpose,
             key_points=", ".join(str(kp) for kp in section.key_points) if section.key_points else "None",
             target_words=target_words,
+            tone=req.tone or "Project default",
+            keywords=", ".join(req.keywords) if req.keywords else "None",
             previous_context=previous_context or "Beginning of article.",
             sources=", ".join(section.sources) if section.sources else "None",
             claims=claims_txt,

@@ -28,6 +28,10 @@ class OutlineGenerator:
             topic=req.topic,
             audience=req.audience or "General Audience",
             content_type=req.content_type or "Article",
+            tone=req.tone or "Project default",
+            target_word_count=req.target_word_count or req.word_count_target or 1200,
+            keywords=", ".join(req.keywords) if req.keywords else "None",
+            verified_sources=", ".join(req.verified_sources) if req.verified_sources else "None",
             strategy=req.strategy or "None",
             user_context=req.user_context or "None",
             anti_cliche_rules=ANTI_CLICHE_RULES

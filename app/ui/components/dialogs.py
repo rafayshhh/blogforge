@@ -1,7 +1,7 @@
 """Reusable modal dialogs for products, links, and multi-stage AI article generation."""
 
 import os
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit,
     QPushButton, QTextEdit, QMessageBox, QProgressBar,
@@ -192,7 +192,13 @@ class GeneratorWorkerThread(QThread):
 
             self.progress_status.emit("Performing automated editorial review...", 85)
             try:
-                self.pipeline.review_article(article, self.request)
+                review = self.pipeline.review_article(article, self.request)
+                if review:
+                    article.seo_audit = {
+                        "overall_score": review.overall_score,
+                        "suggestions": list(review.suggestions[:5]),
+                        "brand_violations": list(review.brand_violations),
+                    }
             except Exception:
                 pass
 
@@ -200,7 +206,10 @@ class GeneratorWorkerThread(QThread):
             article = self.pipeline.finalize_article(article, self.request)
 
             self.progress_status.emit("Article production complete.", 100)
-            self.finished_generation.emit(True, article, "Article successfully generated.")
+            score_note = ""
+            if isinstance(article.seo_audit, dict) and article.seo_audit.get("overall_score") is not None:
+                score_note = f" (Quality score: {article.seo_audit['overall_score']}/100)"
+            self.finished_generation.emit(True, article, f"Article successfully generated{score_note}.")
         except Exception as e:
             self.finished_generation.emit(False, None, f"Generation error: {str(e)}")
 
@@ -208,11 +217,20 @@ class GeneratorWorkerThread(QThread):
 class ArticleGeneratorDialog(QDialog):
     """Guided editorial production studio dialog for multi-stage article drafting."""
 
-    def __init__(self, parent=None, active_project=None):
+    def __init__(
+        self,
+        parent=None,
+        active_project=None,
+        initial_strategy: Optional[str] = None,
+        initial_sources: Optional[List[str]] = None,
+    ):
         super().__init__(parent)
         self.setWindowTitle("AI Article Production Studio")
-        self.setFixedSize(660, 550)
+        self.setMinimumSize(680, 560)
+        self.resize(720, 580)
         self.active_project = active_project
+        self.initial_strategy = initial_strategy
+        self.initial_sources: List[str] = list(initial_sources) if initial_sources else []
         self.worker: Optional[GeneratorWorkerThread] = None
         self.generated_article: Optional[Article] = None
 
@@ -230,6 +248,7 @@ class ArticleGeneratorDialog(QDialog):
         proj_name = self.active_project.name if self.active_project else "Default Workspace"
         lbl_sub = QLabel(f"Project Style Guide: {proj_name} • Multi-stage drafting & review")
         lbl_sub.setObjectName("subtitle")
+        lbl_sub.setWordWrap(True)
         header_box.addWidget(lbl_sub)
         layout.addLayout(header_box)
 
@@ -347,7 +366,14 @@ class ArticleGeneratorDialog(QDialog):
         self.progress_bar.hide()
         layout.addWidget(self.progress_bar)
 
-        self.lbl_status = QLabel("Ready to configure and generate.")
+        initial_msg = "Ready to configure and generate."
+        if self.initial_sources or self.initial_strategy:
+            initial_msg = (
+                f"Research context attached ({len(self.initial_sources)} verified sources). "
+                "Ready to configure and generate."
+            )
+        self.lbl_status = QLabel(initial_msg)
+        self.lbl_status.setWordWrap(True)
         self.lbl_status.setStyleSheet("color: #57534E; font-size: 12px;")
         layout.addWidget(self.lbl_status)
 
@@ -392,11 +418,19 @@ class ArticleGeneratorDialog(QDialog):
             wc_target = 1800
 
         # Prepare request
+        audience_val = None
+        if self.active_project and hasattr(self.active_project, "brand_profile"):
+            audience_val = self.active_project.brand_profile.target_audience or None
+
         req = GenerationRequest(
             project_id=self.active_project.id if self.active_project else "default",
             topic=topic,
+            audience=audience_val,
+            strategy=self.initial_strategy,
             keywords=[k.strip() for k in self.keywords_input.text().split(",") if k.strip()],
+            verified_sources=list(self.initial_sources),
             tone=self.tone_input.text().strip(),
+            target_word_count=wc_target,
             word_count_target=wc_target
         )
 
@@ -442,6 +476,12 @@ class ArticleGeneratorDialog(QDialog):
             self.reject()
         else:
             self.reject()
+
+    def closeEvent(self, event):
+        if self.worker and self.worker.isRunning():
+            self.worker.cancel()
+            self.worker.wait(2000)
+        super().closeEvent(event)
 
     def get_article(self) -> Optional[Article]:
         return self.generated_article

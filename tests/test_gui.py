@@ -99,10 +99,16 @@ def test_projects_widget_crud_operations(tmp_path, monkeypatch):
     p_widget.name_input.setText("Quantum AI")
     p_widget.desc_input.setPlainText("Quantum computing brand")
     p_widget.brand_tone_input.setText("Visionary")
+    p_widget.preferred_terms_input.setText("qubit, fault-tolerant")
+    p_widget.avoided_terms_input.setText("synergy, delve into")
     p_widget.save_project()
 
     assert p_widget.current_project_id is not None
     assert p_widget.project_list.count() >= 1
+    saved_proj = p_widget.service.get_project(p_widget.current_project_id)
+    assert saved_proj is not None
+    assert saved_proj.brand_profile.preferred_terms == ["qubit", "fault-tolerant"]
+    assert saved_proj.brand_profile.avoided_terms == ["synergy", "delve into"]
 
     # 4. Add product
     with patch.object(QInputDialog, "getText", side_effect=[("QubitSim", True), ("Quantum Simulator", True)]):
@@ -214,6 +220,9 @@ def test_articles_widget_editor_preview_and_export(tmp_path, monkeypatch):
     with patch.object(QMessageBox, "question", return_value=QMessageBox.Yes):
         a_widget.delete_selected()
     assert not art_path.exists()
+    assert a_widget.md_editor.toPlainText() == ""
+    assert "0 words" in a_widget.reading_time_label.text()
+    assert "No document selected" in a_widget.lbl_save_status.text()
 
     window.close()
 
@@ -248,6 +257,17 @@ def test_settings_widget_interactions(tmp_path, monkeypatch):
     assert settings.model_combo.isEditable()
     assert "gemini-3.8-flash" in settings.get_selected_model()
     assert "gemini-3.8-flash" in settings.lbl_active_model.text()
+
+    # Custom user-typed model ID overrides stale currentData()
+    settings.model_combo.setEditText("gemini-4-neon")
+    assert settings.get_selected_model() == "gemini-4-neon"
+    settings.model_combo.setCurrentIndex(0)
+
+    # Verify card headers are rendered cleanly
+    from PySide6.QtWidgets import QLabel
+    card_titles = {lbl.text() for lbl in settings.findChildren(QLabel)}
+    assert "ABOUT" in card_titles
+    assert "GOOGLE GEMINI API & CREDENTIALS" in card_titles
 
     # Model discovery callback handling
     settings.on_models_discovered(True, ["gemini-3.8-flash", "gemini-4-carbon"], "Discovered 2 models")
@@ -302,8 +322,16 @@ def test_tutorial_dialog_navigation(tmp_path, monkeypatch):
     dlg._prev_step()
     assert dlg.current_step == 3
 
-    # Test action shortcut execution
-    dlg._handle_action_shortcut()
+    # Test action shortcut execution on AI Studio step cleanly without blocking exec()
+    with patch.object(win, "launch_article_generator") as mock_launch:
+        dlg._handle_action_shortcut()
+        assert mock_launch.called
+
+    # Test navigation shortcut on Step 1 -> Settings tab
+    dlg2 = TutorialDialog(win)
+    dlg2._handle_action_shortcut()
+    assert win.stack.currentIndex() == 4
+    win.close()
 
 
 def test_connection_thread_execution():

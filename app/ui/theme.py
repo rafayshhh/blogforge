@@ -181,6 +181,11 @@ def apply_theme(app) -> None:
         selection-color: {ACCENT};
     }}
 
+    QLabel {{
+        background-color: transparent;
+        border: none;
+    }}
+
     /* --- Root Window & Elevated Panes --- */
     QMainWindow {{
         background-color: {BG_APP};

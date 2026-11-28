@@ -82,3 +82,4 @@ class ResearchRun(BaseModel):
     metadata: dict = Field(default_factory=dict)
     verified_sources: List[VerifiedSource] = Field(default_factory=list)
     grounded_claims: List[ClaimGrounding] = Field(default_factory=list)
+    notes: str = ""

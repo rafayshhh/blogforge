@@ -98,29 +98,27 @@ flowchart LR
 3. Fill in the **Brand Profile**:
    - **Audience:** Senior Engineers, Founders, Decision Makers.
    - **Tone:** Authoritative, direct, conversational, or educational.
-   - **Avoided Terms:** Enter banned buzzwords specific to your publication.
-4. Add your **Product Catalog** with names, descriptions, and CTA links.
-5. Register high-priority **Internal Links** with target keywords. The Topic-Aware Context Engine will intelligently link them only when relevant.
+   - **Preferred & Avoided Terms:** Configure domain vocabulary to encourage and banned buzzwords to flag during automated review.
+4. Add your **Product Catalog** with names and descriptions.
+5. Register high-priority **Internal Links** with target URLs. The Topic-Aware Context Engine will intelligently link them when relevant.
 
 ### Step 3: Run Research & Competitor Landscape
 1. Switch to the **Research** tab.
-2. Enter your target topic (e.g., *"Kubernetes Cost Optimization in 2026"*).
-3. Click **Run Research**. Gemini analyzes the topic, generates search queries, synthesizes consensus facts, and highlights content gaps.
-4. Click **Create Article from Research** to pre-populate the AI Studio with verified sources and key angles.
+2. Enter your target topic (e.g., *"Kubernetes Cost Optimization in 2026"*), choose your depth, and select **Live Web Search (Google Gemini)** or **Offline Mock Search**.
+3. Click **Run Topic Research**. Gemini analyzes the topic, generates search queries, grounds findings via Google Search, synthesizes consensus facts, and highlights content gaps.
+4. Capture any custom thesis thoughts in **Research Notes** and click **Save Research Notes**, then click **Draft with AI Studio →** to pre-populate the AI Studio with verified sources and strategy.
 
 ### Step 4: Autonomous Article Generation
-1. Click the **AI Studio** button in the top navigation bar.
-2. Enter or review the article topic, target audience, and content format.
-3. Click **Generate Outline**. Review the generated sections, headings, and key points.
-4. Click **Generate Full Article**. The iterative pipeline writes section by section, displaying real-time progress and saving recovery checkpoints.
-5. Automated quality checks execute, validating readability and generating a tailored FAQ schema.
+1. Click the **AI Studio** button in the top navigation bar (or jump directly from Research).
+2. Review or customize the article topic, target word count, tone, and comma-separated keywords.
+3. Click **Begin Article Production**. The multi-stage pipeline synthesizes a structured outline, writes each section sequentially with flow continuity, executes anti-slop review heuristics, and generates a tailored FAQ schema.
 
 ### Step 5: Refine in Writing Studio & Multi-Format Export
 1. Click the **Writing** tab to open your generated manuscript.
-2. Choose your view mode: **Split View** (side-by-side Markdown & live HTML preview), **Editor Only**, or **Preview Only**.
-3. Edit your manuscript directly. Word count, character count, and reading time update in real time.
+2. Choose your view mode: **Split View** (side-by-side Markdown & live HTML preview), **Write**, or **Preview**.
+3. Edit your manuscript directly using the Markdown formatting toolbar. Word count and reading time update in real time.
 4. Press `Ctrl+S` to save your draft locally.
-5. Select your export format (**Markdown**, **HTML**, **JSON**) and click **Export**, or sync directly to a local **Next.js** project repository!
+5. Select **Markdown**, **HTML**, **JSON**, or **Next.js Repository** from the export dropdown and click **Export**!
 
 ---
 

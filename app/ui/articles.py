@@ -3,6 +3,7 @@
 import os
 import re
 import json
+import uuid
 import datetime
 from typing import Optional
 from PySide6.QtWidgets import (
@@ -17,6 +18,7 @@ from app.models.article import Article, ArticleSection
 from app.export.markdown import export_markdown
 from app.export.json import export_json
 from app.export.html import export_html
+from app.integrations.nextjs.exporter import NextJSExporter
 from app.ui.components.dialogs import ArticleGeneratorDialog
 from app.ui.theme import get_preview_html_styles
 
@@ -167,9 +169,9 @@ class ArticlesWidget(QWidget):
 
         # Export Format Dropdown & Trigger
         self.export_combo = QComboBox()
-        self.export_combo.addItems(["Markdown", "HTML", "JSON"])
+        self.export_combo.addItems(["Markdown", "HTML", "JSON", "Next.js Repository"])
         self.export_combo.setFixedHeight(30)
-        self.export_combo.setFixedWidth(125)
+        self.export_combo.setFixedWidth(155)
         header_bar.addWidget(self.export_combo)
 
         self.btn_export = QPushButton("Export")
@@ -371,7 +373,8 @@ class ArticlesWidget(QWidget):
         """Creates and persists an empty draft article associated with active project."""
         import time
         ts = int(time.time())
-        blank_slug = f"draft-{ts}"
+        short_uid = uuid.uuid4().hex[:6]
+        blank_slug = f"draft-{ts}-{short_uid}"
         active_proj = self.main_window.get_active_project() if hasattr(self.main_window, "get_active_project") else None
         blank_article = Article(
             project_id=active_proj.id if active_proj else None,
@@ -470,7 +473,7 @@ class ArticlesWidget(QWidget):
         self.html_preview.setMarkdown(txt)
         if self.current_article:
             self._update_metrics(txt)
-        self.lbl_save_status.setText("Document Status: Unsaved changes")
+            self.lbl_save_status.setText("Document Status: Unsaved changes")
 
     def _update_metrics(self, text: str):
         words = len(text.split())
@@ -587,10 +590,13 @@ class ArticlesWidget(QWidget):
                 os.remove(self.current_file_path)
                 self.current_article = None
                 self.current_file_path = None
+                self.md_editor.blockSignals(True)
                 self.md_editor.clear()
+                self.md_editor.blockSignals(False)
                 self.html_preview.clear()
-                self.lbl_metrics.setText("0 words | 0 characters | ~0 min read")
-                self.lbl_save_status.setText("No document selected.")
+                self.meta_label.setText("Select an article or create a new draft.")
+                self.reading_time_label.setText("0 words • ~0 min read")
+                self.lbl_save_status.setText("Document Status: No document selected.")
                 self.refresh_articles()
                 self._update_action_states()
                 if self.main_window and hasattr(self.main_window, "refresh_dashboard_state"):
@@ -603,8 +609,37 @@ class ArticlesWidget(QWidget):
             QMessageBox.warning(self, "No Article", "Select an article first.")
             return
 
+        # Keep live editor changes reflected cleanly in memory before exporting
+        live_content = self.md_editor.toPlainText()
+        if live_content != self.current_article.content:
+            self.current_article.content = live_content
+            self._sync_sections_from_content(self.current_article, live_content)
+
         fmt = self.export_combo.currentText().lower()
         slug = self.current_article.slug or "untitled"
+
+        if fmt == "next.js repository":
+            active_proj = (
+                self.main_window.get_active_project()
+                if self.main_window and hasattr(self.main_window, "get_active_project")
+                else None
+            )
+            if not active_proj:
+                QMessageBox.warning(
+                    self, "Project Required",
+                    "Select or create a project with Next.js integration configured in Projects first."
+                )
+                return
+            try:
+                exporter = NextJSExporter()
+                out_path = exporter.export(self.current_article, active_proj)
+                QMessageBox.information(
+                    self, "Next.js Sync Successful",
+                    f"Synced article to Next.js repository:\n{out_path}"
+                )
+            except Exception as e:
+                QMessageBox.warning(self, "Next.js Export Failed", str(e))
+            return
 
         if fmt == "markdown":
             path, _ = QFileDialog.getSaveFileName(self, "Export Markdown", f"{slug}.md", "Markdown (*.md)")

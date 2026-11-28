@@ -323,3 +323,58 @@ def test_generate_structured_transient_exhaustion(mock_sleep):
 
     assert provider.client.models.generate_content.call_count == 3
     assert mock_sleep.call_count == 2
+
+
+def test_structured_models_gemini_sdk_schema_compatibility():
+    """Verify all Pydantic structured output schemas serialize cleanly for Gemini Developer API."""
+    from google import genai
+    from google.genai import _transformers as t
+    from app.generation.models import ArticleOutline, ArticleReview, FAQData
+    from app.research.models import ContentStrategy
+    from app.research.engine import QueryList
+
+    client = genai.Client(api_key="DUMMY_SCHEMA_CHECK_KEY")
+    for schema_cls in (ArticleOutline, ArticleReview, FAQData, ContentStrategy, QueryList):
+        converted = t.t_schema(client._api_client, schema_cls)
+        assert converted is not None
+
+
+def test_gemini_search_provider_grounding_extraction():
+    """Verify GeminiSearchProvider parses grounding chunks, supports, and web search queries."""
+    from app.research.providers.gemini_search import GeminiSearchProvider
+
+    chunk_web = MagicMock()
+    chunk_web.uri = "https://docs.python.org/3.13/whatsnew/"
+    chunk_web.title = "Python 3.13 Release Notes"
+    chunk = MagicMock()
+    chunk.web = chunk_web
+
+    support_seg = MagicMock()
+    support_seg.text = "Python 3.13 introduces an experimental free-threaded build."
+    support = MagicMock()
+    support.segment = support_seg
+    support.grounding_chunk_indices = [0]
+
+    gm = MagicMock()
+    gm.grounding_chunks = [chunk]
+    gm.grounding_supports = [support]
+    gm.web_search_queries = ["python 3.13 free-threaded gil"]
+
+    candidate = MagicMock()
+    candidate.grounding_metadata = gm
+    mock_resp = MagicMock()
+    mock_resp.text = "Overview of Python 3.13."
+    mock_resp.candidates = [candidate]
+
+    with patch("google.genai.Client") as mock_client_cls:
+        mock_client = MagicMock()
+        mock_client.models.generate_content.return_value = mock_resp
+        mock_client_cls.return_value = mock_client
+
+        prov = GeminiSearchProvider(api_key="DUMMY_SEARCH_KEY")
+        landscape = prov.search("Python 3.13")
+
+    assert len(landscape.results) == 1
+    assert landscape.results[0].domain == "docs.python.org"
+    assert "free-threaded build" in landscape.results[0].snippet
+    assert landscape.related_queries == ["python 3.13 free-threaded gil"]

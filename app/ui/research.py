@@ -12,6 +12,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QThread, Signal
 
 from app.research.engine import ResearchEngine
+from app.research.providers.gemini_search import GeminiSearchProvider
 from app.research.providers.mock import MockSearchProvider
 from app.research.models import ResearchRun
 from app.providers.factory import resolve_active_provider
@@ -21,21 +22,33 @@ class ResearchWorkerThread(QThread):
     """Background worker executing research query generation and landscape synthesis."""
     finished_research = Signal(bool, object, str)
 
-    def __init__(self, topic: str, depth: str, api_key: Optional[str] = None):
+    def __init__(
+        self,
+        topic: str,
+        depth: str,
+        api_key: Optional[str] = None,
+        use_live_search: bool = True,
+    ):
         super().__init__()
         self.topic = topic
         self.depth = depth
         self.api_key = api_key
+        self.use_live_search = use_live_search
 
     def run(self):
         try:
             key_param = self.api_key if self.api_key else None
             ai_prov = resolve_active_provider(api_key=key_param)
-            search_prov = MockSearchProvider()
+            search_prov = (
+                GeminiSearchProvider(api_key=key_param)
+                if self.use_live_search
+                else MockSearchProvider()
+            )
             engine = ResearchEngine(ai_provider=ai_prov, search_provider=search_prov)
 
             run_result = engine.run_research(topic=self.topic, depth=self.depth)
-            msg = "Research completed successfully with Google Gemini."
+            mode_label = "live Google Search grounding" if self.use_live_search else "offline mode"
+            msg = f"Research completed successfully with Google Gemini ({mode_label})."
             self.finished_research.emit(True, run_result, msg)
         except Exception as e:
             self.finished_research.emit(False, None, f"Research error: {str(e)}")
@@ -50,6 +63,7 @@ class ResearchWidget(QWidget):
         self.research_dir = "data/research"
         os.makedirs(self.research_dir, exist_ok=True)
         self.current_run: Optional[ResearchRun] = None
+        self.current_run_path: Optional[str] = None
         self.worker: Optional[ResearchWorkerThread] = None
 
         self.init_ui()
@@ -89,6 +103,18 @@ class ResearchWidget(QWidget):
         self.depth_combo.addItems(["Standard", "Deep", "Competitive Analysis"])
         self.depth_combo.setFixedHeight(32)
         left_layout.addWidget(self.depth_combo)
+
+        lbl_mode = QLabel("Search Source Mode")
+        lbl_mode.setObjectName("caption")
+        left_layout.addWidget(lbl_mode)
+
+        self.search_mode_combo = QComboBox()
+        self.search_mode_combo.addItems([
+            "Live Web Search (Google Gemini)",
+            "Offline Mock Search (Deterministic)",
+        ])
+        self.search_mode_combo.setFixedHeight(32)
+        left_layout.addWidget(self.search_mode_combo)
 
         self.btn_run = QPushButton("Run Topic Research")
         self.btn_run.setObjectName("primaryBtn")
@@ -211,6 +237,16 @@ class ResearchWidget(QWidget):
         self.notes_editor.setPlaceholderText("Record quotes, citations, key findings, and thesis outlines...")
         notes_layout.addWidget(self.notes_editor)
 
+        notes_btn_row = QHBoxLayout()
+        notes_btn_row.addStretch()
+        self.btn_save_notes = QPushButton("Save Research Notes")
+        self.btn_save_notes.setObjectName("primaryBtn")
+        self.btn_save_notes.setFixedHeight(32)
+        self.btn_save_notes.setCursor(Qt.PointingHandCursor)
+        self.btn_save_notes.clicked.connect(self.save_current_notes)
+        notes_btn_row.addWidget(self.btn_save_notes)
+        notes_layout.addLayout(notes_btn_row)
+
         self.tabs.addTab(tab_notes, "Research Notes")
 
         right_layout.addWidget(self.tabs)
@@ -239,7 +275,13 @@ class ResearchWidget(QWidget):
         self.strategy_view.clear()
 
         depth = self.depth_combo.currentText()
-        self.worker = ResearchWorkerThread(topic=topic, depth=depth, api_key=api_key)
+        use_live = self.search_mode_combo.currentIndex() == 0
+        self.worker = ResearchWorkerThread(
+            topic=topic,
+            depth=depth,
+            api_key=api_key,
+            use_live_search=use_live,
+        )
         self.worker.finished_research.connect(self.on_research_complete)
         self.worker.start()
 
@@ -252,6 +294,11 @@ class ResearchWidget(QWidget):
             return
 
         self.current_run = result
+        self.current_run_path = None
+        if hasattr(self, "notes_editor"):
+            existing_notes = self.notes_editor.toPlainText().strip()
+            if existing_notes and not result.notes:
+                result.notes = existing_notes
         self.save_research_run(result)
         self.display_research_run(result)
         self.refresh_previous_runs()
@@ -260,32 +307,59 @@ class ResearchWidget(QWidget):
 
     def save_research_run(self, run: ResearchRun) -> None:
         """Persists the ResearchRun to local JSON storage."""
-        run_id = str(uuid.uuid4())
-        path = os.path.join(self.research_dir, f"{run_id}.json")
+        target_path = getattr(self, "current_run_path", None)
+        if not target_path:
+            run_id = str(uuid.uuid4())
+            target_path = os.path.join(self.research_dir, f"{run_id}.json")
+            self.current_run_path = target_path
+        os.makedirs(self.research_dir, exist_ok=True)
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            with open(target_path, "w", encoding="utf-8") as f:
                 f.write(run.model_dump_json(indent=2))
         except Exception:
             pass
 
+    def save_current_notes(self) -> None:
+        """Saves manual scratchpad notes into the active ResearchRun on disk."""
+        if not self.current_run:
+            QMessageBox.warning(
+                self, "No Active Research",
+                "Run or select a saved research dossier before saving notes."
+            )
+            return
+        self.current_run.notes = self.notes_editor.toPlainText()
+        self.save_research_run(self.current_run)
+        self.lbl_status.setText("✓ Research notes saved locally.")
+
     def refresh_previous_runs(self) -> None:
-        """Populates the history combo box with saved research runs."""
+        """Populates the history combo box sorted chronologically newest-first."""
         self.history_combo.blockSignals(True)
         self.history_combo.clear()
         self.history_combo.addItem("Select previous research run...", None)
 
+        entries = []
         if os.path.exists(self.research_dir):
-            for fname in sorted(os.listdir(self.research_dir), reverse=True):
+            for fname in os.listdir(self.research_dir):
                 if fname.endswith(".json"):
                     fpath = os.path.join(self.research_dir, fname)
                     try:
+                        mtime = os.path.getmtime(fpath)
                         with open(fpath, "r", encoding="utf-8") as f:
                             data = json.load(f)
                         topic = data.get("topic", fname)
-                        self.history_combo.addItem(topic, fpath)
+                        entries.append((mtime, topic, fpath))
                     except Exception:
                         continue
 
+        entries.sort(key=lambda x: x[0], reverse=True)
+        selected_idx = 0
+        active_path = getattr(self, "current_run_path", None)
+        for idx, (_, topic, fpath) in enumerate(entries, start=1):
+            self.history_combo.addItem(topic, fpath)
+            if active_path and fpath == active_path:
+                selected_idx = idx
+
+        self.history_combo.setCurrentIndex(selected_idx)
         self.history_combo.blockSignals(False)
 
     def load_selected_history_run(self) -> None:
@@ -297,6 +371,7 @@ class ResearchWidget(QWidget):
             with open(fpath, "r", encoding="utf-8") as f:
                 run = ResearchRun.model_validate_json(f.read())
             self.current_run = run
+            self.current_run_path = fpath
             self.topic_input.setText(run.topic)
             self.display_research_run(run)
             self.lbl_status.setText(f"Loaded saved research for: {run.topic}")
@@ -304,6 +379,10 @@ class ResearchWidget(QWidget):
             QMessageBox.warning(self, "Load Error", f"Failed to load research run: {e}")
 
     def display_research_run(self, run: ResearchRun):
+        # Restore notes if UI initialized
+        if hasattr(self, "notes_editor"):
+            self.notes_editor.setPlainText(run.notes or "")
+
         # Display queries
         self.queries_list.clear()
         for q in run.queries:
@@ -373,6 +452,7 @@ class ResearchWidget(QWidget):
             try:
                 os.remove(fpath)
                 self.current_run = None
+                self.current_run_path = None
                 self.queries_list.clear()
                 self.sources_table.setRowCount(0)
                 self.source_detail.clear()
@@ -400,14 +480,22 @@ class ResearchWidget(QWidget):
 
         sources = []
         if self.current_run:
-            for landscape in self.current_run.search_landscape:
-                for r in landscape.results:
-                    if r.title:
-                        sources.append(r.title)
+            if self.current_run.verified_sources:
+                for src in self.current_run.verified_sources[:6]:
+                    sources.append(f"{src.title} ({src.canonical_url})")
+            else:
+                for landscape in self.current_run.search_landscape:
+                    for r in landscape.results:
+                        if r.title:
+                            sources.append(f"{r.title} ({r.url})" if r.url else r.title)
 
-        strategy_summary = None
+        strategy_parts = []
         if self.current_run and self.current_run.strategy:
-            strategy_summary = self.current_run.strategy.recommended_angle
+            strategy_parts.append(self.current_run.strategy.recommended_angle)
+        notes_txt = self.notes_editor.toPlainText().strip()
+        if notes_txt:
+            strategy_parts.append(f"Editorial Notes: {notes_txt}")
+        strategy_summary = "\n".join(strategy_parts) if strategy_parts else None
 
         if self.main_window and hasattr(self.main_window, "launch_article_generator_with_context"):
             self.main_window.launch_article_generator_with_context(
@@ -417,3 +505,8 @@ class ResearchWidget(QWidget):
             )
         elif self.main_window and hasattr(self.main_window, "launch_article_generator"):
             self.main_window.launch_article_generator()
+
+    def cleanup_threads(self) -> None:
+        """Gracefully stops active background worker threads prior to widget teardown."""
+        if self.worker and self.worker.isRunning():
+            self.worker.wait(2000)

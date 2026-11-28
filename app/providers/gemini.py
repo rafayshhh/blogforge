@@ -411,6 +411,9 @@ class GeminiProvider(AIProvider):
                 )
 
                 if hasattr(response, "parsed") and response.parsed is not None:
+                    if isinstance(response.parsed, dict):
+                        logger.info("Structured generation completed via response.parsed dict conversion.")
+                        return response_model.model_validate(response.parsed)
                     logger.info("Structured generation completed successfully via response.parsed.")
                     return response.parsed
 
@@ -427,7 +430,17 @@ class GeminiProvider(AIProvider):
                 if not stripped:
                     raise ProviderResponseError("Gemini returned an empty response.")
 
-                parsed_model = response_model.model_validate_json(stripped)
+                try:
+                    parsed_model = response_model.model_validate_json(stripped)
+                except Exception:
+                    first_brace = stripped.find("{")
+                    last_brace = stripped.rfind("}")
+                    if first_brace != -1 and last_brace > first_brace:
+                        parsed_model = response_model.model_validate_json(
+                            stripped[first_brace:last_brace + 1]
+                        )
+                    else:
+                        raise
                 logger.info("Structured generation completed successfully via JSON fallback.")
                 return parsed_model
 

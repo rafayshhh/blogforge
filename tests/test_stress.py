@@ -129,12 +129,16 @@ def test_benchmark_application_startup_time(tmp_path, monkeypatch):
     assert elapsed < 3.0
 
 
-def test_benchmark_mocked_pipeline_throughput():
+def test_benchmark_mocked_pipeline_throughput(tmp_path):
     """Measure article generation pipeline speed across 10 sections with mocked AI."""
     mock_ai = MagicMock()
     mock_ai.generate.return_value = MagicMock(text="Fast generated section text paragraph.")
 
-    pipeline = GenerationPipeline(mock_ai)
+    pipeline = GenerationPipeline(
+        mock_ai,
+        generation_dir=str(tmp_path / "generation"),
+        articles_dir=str(tmp_path / "articles"),
+    )
     req = GenerationRequest(topic="High Throughput Benchmark")
     outline = ArticleOutline(
         title="High Throughput Benchmark",

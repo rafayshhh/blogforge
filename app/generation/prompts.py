@@ -54,6 +54,10 @@ Generate an ArticleOutline for the topic: "{topic}"
 Context:
 Audience: {audience}
 Content Type: {content_type}
+Preferred Tone: {tone}
+Target Total Word Count: ~{target_word_count} words
+Target Keywords: {keywords}
+Verified Sources: {verified_sources}
 Content Strategy: {strategy}
 User Context/Product Info: {user_context}
 
@@ -79,6 +83,8 @@ Heading: {heading} (Level {level})
 Purpose: {purpose}
 Key Points: {key_points}
 Target Word Count: ~{target_words} words
+Tone: {tone}
+Target Keywords: {keywords}
 Previous Section Continuity: {previous_context}
 
 Relevant Sources: {sources}

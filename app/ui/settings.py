@@ -57,11 +57,11 @@ class SettingsWidget(QWidget):
     settings_updated = Signal()
 
     CANDIDATE_MODELS: List[Tuple[str, str]] = [
-        ("gemini-3.8-flash", "Gemini 3.8 Flash — Recommended Default"),
-        ("gemini-3.5-flash-lite", "Gemini 3.5 Flash-Lite — Fast & Lightweight"),
-        ("gemini-4-hydrogen", "Gemini 4 Hydrogen — High Performance Preview"),
-        ("gemini-4-argon", "Gemini 4 Argon — Balanced Multimodal Preview"),
-        ("gemini-4-carbon", "Gemini 4 Carbon — Heavy Reasoning Preview"),
+        ("gemini-3.8-flash", "Recommended Default"),
+        ("gemini-3.5-flash-lite", "Fast & Lightweight"),
+        ("gemini-4-hydrogen", "High Performance Preview"),
+        ("gemini-4-argon", "Balanced Multimodal Preview"),
+        ("gemini-4-carbon", "Heavy Reasoning Preview"),
     ]
 
     def __init__(self):
@@ -97,12 +97,10 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 1: Google Gemini API & Credentials
         # ---------------------------------------------------------------------
-        card_api = self._create_card(
+        card_api, api_layout = self._create_card_with_layout(
             "GOOGLE GEMINI API & CREDENTIALS",
             "Manage Google AI Studio API key and test live connectivity"
         )
-        api_layout = QVBoxLayout(card_api)
-        api_layout.setContentsMargins(18, 16, 18, 16)
         api_layout.setSpacing(12)
 
         # API Key Row
@@ -148,12 +146,10 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 2: Gemini Model Selection & Reasoning Configuration
         # ---------------------------------------------------------------------
-        card_model = self._create_card(
+        card_model, model_layout = self._create_card_with_layout(
             "GEMINI MODEL SELECTION & REASONING CONFIGURATION",
             "Select active model, reasoning depth, and discover account models"
         )
-        model_layout = QVBoxLayout(card_model)
-        model_layout.setContentsMargins(18, 16, 18, 16)
         model_layout.setSpacing(10)
 
         lbl_m = QLabel("Active Gemini Model")
@@ -216,12 +212,10 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 3: Storage & Local Publishing Defaults
         # ---------------------------------------------------------------------
-        card_storage = self._create_card(
+        card_storage, store_layout = self._create_card_with_layout(
             "LOCAL PUBLISHING & STORAGE",
             "File paths for documents, drafts, and research"
         )
-        store_layout = QVBoxLayout(card_storage)
-        store_layout.setContentsMargins(18, 16, 18, 16)
         store_layout.setSpacing(6)
 
         store_info = [
@@ -232,9 +226,12 @@ class SettingsWidget(QWidget):
         ]
         for title, path in store_info:
             row_s = QHBoxLayout()
+            row_s.setSpacing(12)
             lbl_t = QLabel(title)
+            lbl_t.setMinimumWidth(185)
             lbl_t.setStyleSheet("color: #57534E; font-size: 12px; font-weight: 500;")
             lbl_p = QLabel(path)
+            lbl_p.setWordWrap(True)
             lbl_p.setStyleSheet("color: #8C877F; font-size: 12px; font-family: monospace;")
             row_s.addWidget(lbl_t)
             row_s.addWidget(lbl_p, 1)
@@ -245,9 +242,10 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 4: System Information
         # ---------------------------------------------------------------------
-        card_sys = self._create_card("SYSTEM RUNTIME INFORMATION", "Local environment and dependencies")
-        sys_layout = QVBoxLayout(card_sys)
-        sys_layout.setContentsMargins(18, 16, 18, 16)
+        card_sys, sys_layout = self._create_card_with_layout(
+            "SYSTEM RUNTIME INFORMATION",
+            "Local environment and dependencies"
+        )
         sys_layout.setSpacing(6)
 
         sys_info = [
@@ -259,9 +257,12 @@ class SettingsWidget(QWidget):
         ]
         for title, val in sys_info:
             row_inf = QHBoxLayout()
+            row_inf.setSpacing(12)
             lbl_t = QLabel(title)
+            lbl_t.setMinimumWidth(185)
             lbl_t.setStyleSheet("color: #57534E; font-size: 12px; font-weight: 500;")
             lbl_v = QLabel(val)
+            lbl_v.setWordWrap(True)
             lbl_v.setStyleSheet("color: #8C877F; font-size: 12px;")
             row_inf.addWidget(lbl_t)
             row_inf.addWidget(lbl_v, 1)
@@ -272,12 +273,10 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 5: Support & Transparency
         # ---------------------------------------------------------------------
-        card_trans = self._create_card(
+        card_trans, trans_layout = self._create_card_with_layout(
             "SUPPORT & TRANSPARENCY",
             "Privacy policy, zero ads, and rate-limiting safeguards"
         )
-        trans_layout = QVBoxLayout(card_trans)
-        trans_layout.setContentsMargins(18, 16, 18, 16)
         trans_layout.setSpacing(12)
 
         row_ad = QHBoxLayout()
@@ -343,9 +342,10 @@ class SettingsWidget(QWidget):
         # ---------------------------------------------------------------------
         # Card 6: About (Reference Design)
         # ---------------------------------------------------------------------
-        card_about = self._create_card("ABOUT", "Application metadata, developer, and licensing")
-        about_layout = QVBoxLayout(card_about)
-        about_layout.setContentsMargins(18, 16, 18, 16)
+        card_about, about_layout = self._create_card_with_layout(
+            "ABOUT",
+            "Application metadata, developer, and licensing"
+        )
         about_layout.setSpacing(10)
 
         # App Identity
@@ -439,9 +439,14 @@ class SettingsWidget(QWidget):
         root_layout.addWidget(scroll)
 
         self.model_combo.currentIndexChanged.connect(self.on_model_changed)
+        self.model_combo.editTextChanged.connect(self._on_model_edit_text)
         self._refresh_key_status()
 
     def _create_card(self, title: str, subtitle: str) -> QFrame:
+        card, _ = self._create_card_with_layout(title, subtitle)
+        return card
+
+    def _create_card_with_layout(self, title: str, subtitle: str) -> Tuple[QFrame, QVBoxLayout]:
         card = QFrame()
         card.setObjectName("settingsCard")
         card.setStyleSheet("""
@@ -457,7 +462,28 @@ class SettingsWidget(QWidget):
                 padding: 0px;
             }
         """)
-        return card
+        card_layout = QVBoxLayout(card)
+        card_layout.setContentsMargins(18, 16, 18, 16)
+        card_layout.setSpacing(8)
+
+        lbl_head = QLabel(title)
+        lbl_head.setStyleSheet(
+            "color: #9A3412; font-size: 11px; font-weight: 700; letter-spacing: 0.7px;"
+        )
+        card_layout.addWidget(lbl_head)
+
+        if subtitle:
+            lbl_sub = QLabel(subtitle)
+            lbl_sub.setWordWrap(True)
+            lbl_sub.setStyleSheet("color: #78716C; font-size: 12px;")
+            card_layout.addWidget(lbl_sub)
+
+        div_head = QFrame()
+        div_head.setFrameShape(QFrame.Shape.HLine)
+        div_head.setStyleSheet("color: #EFECE4;")
+        card_layout.addWidget(div_head)
+
+        return card, card_layout
 
     def get_selected_provider(self) -> str:
         return "gemini"
@@ -498,19 +524,36 @@ class SettingsWidget(QWidget):
         self.save_provider_settings()
 
     def get_selected_model(self) -> str:
-        current_data = self.model_combo.currentData()
-        if current_data:
-            return current_data
         raw_text = self.model_combo.currentText().strip()
+        idx = self.model_combo.currentIndex()
+        if idx >= 0 and raw_text == self.model_combo.itemText(idx).strip():
+            current_data = self.model_combo.itemData(idx)
+            if current_data:
+                return str(current_data)
         if " — " in raw_text:
             return raw_text.split(" — ")[0].strip()
         return raw_text
 
+    def _on_model_edit_text(self, text: str) -> None:
+        cleaned = text.split(" — ")[0].strip() if " — " in text else text.strip()
+        if cleaned:
+            self.lbl_active_model.setText(f"Active Model ID: {cleaned}")
+            save_config_value("GEMINI_MODEL", cleaned)
+            self.settings_updated.emit()
+
     def on_model_changed(self):
         model_id = self.get_selected_model()
-        self.lbl_active_model.setText(f"Active Model ID: {model_id}")
-        save_config_value("GEMINI_MODEL", model_id)
-        self.settings_updated.emit()
+        if model_id:
+            self.lbl_active_model.setText(f"Active Model ID: {model_id}")
+            save_config_value("GEMINI_MODEL", model_id)
+            self.settings_updated.emit()
+
+    def cleanup_threads(self) -> None:
+        """Waits briefly for active background threads before window shutdown."""
+        if self.tester and self.tester.isRunning():
+            self.tester.wait(1500)
+        if self.discovery_thread and self.discovery_thread.isRunning():
+            self.discovery_thread.wait(1500)
 
     def on_thinking_changed(self, text: str):
         save_config_value("GEMINI_THINKING_LEVEL", text)
